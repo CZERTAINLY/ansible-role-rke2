@@ -1,0 +1,266 @@
+---
+# tasks file for rke2
+
+# Prerequisities
+
+- name: Install RKE2 prerequisites
+  apt:
+    name: "{{item}}"
+    state: latest
+    update_cache: no
+  with_items:
+    - curl
+    - apparmor-utils
+    - iptables
+    - ca-certificates
+  tags:
+    - rke2
+    - rke_packages
+
+# RKE2 Config dir
+
+- name: Create rke2 config dir
+  file:
+    path: /etc/rancher/rke2
+    state: directory
+  tags:
+    - rke2
+    - rke2_config_dir
+
+# # Install harbor certificates
+# - name: Creates /usr/local/share/ca-certificates/local/ directory
+#   file:
+#     path: /usr/local/share/ca-certificates/local/
+#     state: directory
+#   tags:
+#     - rke2
+#     - harbor_certs  
+
+# - name: Copy harbor-3key-company-chain.pem
+#   ansible.builtin.copy:
+#     src: harbor-3key-company-chain.pem
+#     dest: /usr/local/share/ca-certificates/local/harbor-3key-company-chain.pem
+#     owner: root
+#     group: root
+#     mode: '0644'
+#     backup: yes
+#   tags:
+#     - rke2
+#     - harbor_certs    
+
+# - name: Copy harbor.crt
+#   ansible.builtin.copy:
+#     src: harbor.crt
+#     dest: /usr/local/share/ca-certificates/local/harbor.crt
+#     owner: root
+#     group: root
+#     mode: '0644'
+#     backup: yes
+#   tags:
+#     - rke2
+#     - harbor_certs  
+
+# - name: Copy harbor2.crt
+#   ansible.builtin.copy:
+#     src: harbor2.crt
+#     dest: /usr/local/share/ca-certificates/local/harbor2.crt
+#     owner: root
+#     group: root
+#     mode: '0644'
+#     backup: yes
+#   tags:
+#     - rke2
+#     - harbor_certs  
+
+# - name: Copy harbor3.crt
+#   ansible.builtin.copy:
+#     src: harbor3.crt
+#     dest: /usr/local/share/ca-certificates/local/harbor3.crt
+#     owner: root
+#     group: root
+#     mode: '0644'
+#     backup: yes
+#   tags:
+#     - rke2
+#     - harbor_certs  
+
+# - name: Update CA certs
+#   shell: update-ca-certificates
+#   tags:
+#     - rke2
+#     - harbor_certs  
+
+# - name: Configure RKE2 registries
+#   ansible.builtin.copy:
+#     src: "registries.yaml"
+#     dest: "/etc/rancher/rke2/registries.yaml"
+#   tags:
+#     - rke2
+#     - harbor_certs  
+#     - rke2_registries
+
+# Install & configure RKE2
+
+- name: Configure RKE2 tls-san
+  ansible.builtin.template:
+    src: "config.j2"
+    dest: "/etc/rancher/rke2/config.yaml"
+  tags:
+    - rke2
+    - tls-san
+
+# - name: Install RKE2 
+#   shell: curl -sfL https://get.rke2.io | sudo sh -
+#   tags:
+#     - rke2
+#     - rke2_install
+
+# - name: Enable RKE2
+#   ansible.builtin.systemd:
+#     name: rke2-server.service
+#     enabled: yes
+#   tags:
+#     - rke2
+#     - rke2_enable
+
+# - name: Start RKE2
+#   ansible.builtin.systemd:
+#     name: rke2-server.service
+#     state: started
+#   tags:
+#     - rke2
+#     - rke2_start
+
+- name: Create kube config dir
+  file:
+    path: /root/.kube
+    state: directory
+  tags:
+    - rke2
+    - kube_config
+    - kube_config_dir
+
+# - name: Copy kube config 
+#   shell: cp /etc/rancher/rke2/rke2.yaml /root/.kube/config && chmod go= /root/.kube/config
+#   tags:
+#     - rke2
+#     - kube_config
+#     - kube_config_file
+
+# confgure path to kubectl in .bashrc
+- name: Confgure PATH to kubectl in .bashrc
+  lineinfile: dest="/root/.bashrc"
+              regexp="^PATH=/var/lib/rancher/rke2/bin:"
+              line="PATH=/var/lib/rancher/rke2/bin:$PATH"
+              state=present
+  tags:
+    - rke2
+    - rke2_kubectl_path
+    - rke2_kubectl_path_bashrc
+    
+# confgure path to kubectl in .profile
+- name: Confgure path to kubectl in .profile
+  lineinfile: dest="/root/.profile"
+              regexp="^PATH=/var/lib/rancher/rke2/bin:"
+              line="PATH=/var/lib/rancher/rke2/bin:$PATH"
+              state=present
+              insertbefore="^mesg n 2> /dev/null || true"
+  tags:
+    - rke2
+    - rke2_kubectl_path
+    - rke2_kubectl_path_profile
+
+# # Add RKE2 Cert Manager
+# # kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.9.1/cert-manager.yaml
+# - name: Download and apply cert-manager manifest to the cluster.
+#   # ansible.builtin.get_url:
+#   #   url: https://github.com/cert-manager/cert-manager/releases/download/v1.9.1/cert-manager.yaml
+#   #   dest: /tmp/cert-manager.yaml
+#   #   mode: '0664'
+#   shell: /var/lib/rancher/rke2/bin/kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.9.1/cert-manager.yaml
+#   tags:
+#     - rke2
+#     - rke2_certmanager
+
+# - name: Apply cert-manager manifest to the cluster.
+#   kubernetes.core.k8s:
+#     state: present
+#     src: /tmp/cert-manager.yaml
+#   tags:
+#     - rke2
+#     - rke2_certmanager
+
+# # Add RKE2 NginX ingress
+# # kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.3.1/deploy/static/provider/cloud/deploy.yaml
+# - name: Download and apply ingress-nginx manifest to the cluster.
+#   # ansible.builtin.get_url:
+#   #    url: https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.3.1/deploy/static/provider/cloud/deploy.yaml
+#   #    dest: /tmp/ingress-nginx.yaml
+#   #    mode: '0664'
+#   shell: /var/lib/rancher/rke2/bin/kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.3.1/deploy/static/provider/cloud/deploy.yaml
+#   tags:
+#     - rke2
+#     - rke2_ingress
+
+# - name: Apply ingress-nginx manifest to the cluster.
+#   kubernetes.core.k8s:
+#     state: present
+#     src: /tmp/ingress-nginx.yaml
+#   tags:
+#     - rke2
+#     - rke2_ingress
+
+# - name: Configure ingress nginx hostport ports
+#   shell: /var/lib/rancher/rke2/bin/kubectl patch deployment -n ingress-nginx ingress-nginx-controller -p '{"spec":{"template":{"spec":{"containers":[{"name":"controller","ports":[{"containerPort":80,"hostPort":80,"name":"http","protocol":"TCP"},{"containerPort":443,"hostPort":443,"name":"https","protocol":"TCP"},{"containerPort":8443,"hostPort":8443,"name":"webhook","protocol":"TCP"}]}]}}}}'
+#   tags:
+#     - rke2
+#     - rke2_ingress
+#     - rke2_ingress_hostport
+
+
+# Helm
+
+- name: Install helm prerequisites
+  apt:
+    name: "{{item}}"
+    state: latest
+    update_cache: no
+  with_items:
+    - apt-transport-https
+    - gpg
+  tags:
+    - rke2
+    - rke_packages
+    - helm
+    - heml_packages
+
+- name: install heml keyring
+  ansible.builtin.get_url:
+    url: https://baltocdn.com/helm/signing.asc 
+    dest: /usr/share/keyrings/helm.asc
+    mode: 0644
+  tags:
+    - rke2
+    - rke_packages
+    - helm
+    - heml_packages
+
+- name: add heml packages repository
+  ansible.builtin.apt_repository:
+    repo: deb [signed-by=/usr/share/keyrings/helm.asc] https://baltocdn.com/helm/stable/debian/ all main
+    state: present
+  tags:
+    - rke2
+    - rke_packages
+    - heml_packages
+    - helm
+
+- name: Install helm
+  apt:
+    name: helm
+    state: latest
+  tags:
+    - rke2
+    - rke_packages
+    - helm
+    - heml_packages
