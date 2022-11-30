@@ -5,14 +5,13 @@
 
 - name: Install RKE2 prerequisites
   apt:
-    name: "{{item}}"
+    name:
+      - curl
+      - apparmor-utils
+      - iptables
+      - ca-certificates
     state: latest
-    update_cache: no
-  with_items:
-    - curl
-    - apparmor-utils
-    - iptables
-    - ca-certificates
+    cache_valid_time: 86400
   tags:
     - rke2
     - rke_packages
@@ -147,6 +146,7 @@
 #     - kube_config
 #     - kube_config_file
 
+# TODO: zvlastni: 2x za sebou
 # confgure path to kubectl in .bashrc
 - name: Confgure PATH to kubectl in .bashrc
   lineinfile: dest="/root/.bashrc"
@@ -222,12 +222,12 @@
 
 - name: Install helm prerequisites
   apt:
-    name: "{{item}}"
+    name:
+      - apt-transport-https
+      - gpg
     state: latest
     update_cache: no
-  with_items:
-    - apt-transport-https
-    - gpg
+    cache_valid_time: 86400
   tags:
     - rke2
     - rke_packages
@@ -236,7 +236,7 @@
 
 - name: install heml keyring
   ansible.builtin.get_url:
-    url: https://baltocdn.com/helm/signing.asc 
+    url: https://baltocdn.com/helm/signing.asc
     dest: /usr/share/keyrings/helm.asc
     mode: 0644
   tags:
@@ -259,6 +259,8 @@
   apt:
     name: helm
     state: latest
+    cache_valid_time: 86400
+  when: not ansible_check_mode # will fail in check mode if db isn't present
   tags:
     - rke2
     - rke_packages
