@@ -1,9 +1,5 @@
 ---
-# tasks file for rke2
-
-# Prerequisities
-
-- name: Install RKE2 prerequisites
+- name: install RKE2 prerequisites
   apt:
     name:
       - curl
@@ -16,9 +12,7 @@
     - rke2
     - rke_packages
 
-# RKE2 Config dir
-
-- name: Create rke2 config dir
+- name: create RKE2 config dir
   file:
     path: /etc/rancher/rke2
     state: directory
@@ -100,7 +94,7 @@
 
 # Install & configure RKE2
 
-- name: Configure RKE2 tls-san
+- name: configure RKE2 tls-san
   ansible.builtin.template:
     src: "config.j2"
     dest: "/etc/rancher/rke2/config.yaml"
@@ -130,7 +124,8 @@
 #     - rke2
 #     - rke2_start
 
-- name: Create kube config dir
+# TODO this is only created and never used. Is it necesary?
+- name: create kube config dir
   file:
     path: /root/.kube
     state: directory
@@ -146,9 +141,7 @@
 #     - kube_config
 #     - kube_config_file
 
-# TODO: zvlastni: 2x za sebou
-# confgure path to kubectl in .bashrc
-- name: Confgure PATH to kubectl in .bashrc
+- name: configure PATH to kubectl in .bashrc
   lineinfile: dest="/root/.bashrc"
               regexp="^PATH=/var/lib/rancher/rke2/bin:"
               line="PATH=/var/lib/rancher/rke2/bin:$PATH"
@@ -157,9 +150,8 @@
     - rke2
     - rke2_kubectl_path
     - rke2_kubectl_path_bashrc
-    
-# confgure path to kubectl in .profile
-- name: Confgure path to kubectl in .profile
+
+- name: configure path to kubectl in .profile
   lineinfile: dest="/root/.profile"
               regexp="^PATH=/var/lib/rancher/rke2/bin:"
               line="PATH=/var/lib/rancher/rke2/bin:$PATH"
@@ -220,7 +212,7 @@
 
 # Helm
 
-- name: Install helm prerequisites
+- name: install helm prerequisites
   apt:
     name:
       - apt-transport-https
@@ -255,7 +247,7 @@
     - heml_packages
     - helm
 
-- name: Install helm
+- name: install helm
   apt:
     name: helm
     state: latest
