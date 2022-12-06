@@ -28,16 +28,6 @@
     - rke2
     - tls-san
 
-# TODO this is only created and never used. Is it necesary?
-- name: create kube config dir
-  file:
-    path: /root/.kube
-    state: directory
-  tags:
-    - rke2
-    - kube_config
-    - kube_config_dir
-
 - name: configure PATH to kubectl in .bashrc
   lineinfile: dest="/root/.bashrc"
               regexp="^PATH=/var/lib/rancher/rke2/bin:"
@@ -58,6 +48,48 @@
     - rke2
     - rke2_kubectl_path
     - rke2_kubectl_path_profile
+
+# check_mode return changed in check mode, it was fixed in
+# Ansible 2.13.0, https://github.com/ansible/ansible/issues/65687
+- name: download rke2 installer
+  ansible.builtin.get_url:
+    url: https://get.rke2.io
+    dest: /usr/local/bin/rke2-install.sh
+    mode: '0755'
+    backup: true
+
+# versions of rke2 are listed here:
+#    https://github.com/ansible/ansible/issues/65687
+# but we are OK with any present
+- name: exec rke2 installer
+  ansible.builtin.shell:
+    cmd: /usr/local/bin/rke2-install.sh
+    creates: /usr/local/bin/rke2
+
+- name: enable & start rke service
+  ansible.builtin.systemd:
+    name: rke2-server.service
+    enabled: yes
+    masked: no
+    state: started
+
+# this and later command is needed to kubectl start working
+- name: create kube config dir
+  file:
+    path: /root/.kube
+    state: directory
+  tags:
+    - rke2
+    - kube_config
+    - kube_config_dir
+
+- name: copy kube config
+  ansible.builtin.copy:
+    src: /etc/rancher/rke2/rke2.yaml
+    dest: /root/.kube/config
+    owner: root
+    group: root
+    mode: '0600'
 
 - name: install helm prerequisites
   apt:
