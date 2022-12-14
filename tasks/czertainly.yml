@@ -1,7 +1,0 @@
----
-- name: create namespace CZERTAINLY
-  kubernetes.core.k8s:
-    namespace: default
-    state: present
-    src: /etc/ansible/roles/rke2/files/namespace-czertainly.yaml
-

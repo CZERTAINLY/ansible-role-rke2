@@ -4,6 +4,3 @@
 
 - name: install rke
   include: rke.yml
-
-- name: install CZERTAINLY
-  include: czertainly.yml
