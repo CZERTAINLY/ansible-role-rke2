@@ -1,0 +1,47 @@
+---
+- name: install helm prerequisites
+  apt:
+    name:
+      - apt-transport-https
+      - gpg
+    state: latest
+    update_cache: no
+    cache_valid_time: 86400
+  tags:
+    - rke2
+    - rke_packages
+    - helm
+    - heml_packages
+
+- name: install heml keyring
+  ansible.builtin.get_url:
+    url: https://baltocdn.com/helm/signing.asc
+    dest: /usr/share/keyrings/helm.asc
+    mode: 0644
+  tags:
+    - rke2
+    - rke_packages
+    - helm
+    - heml_packages
+
+- name: add heml packages repository
+  ansible.builtin.apt_repository:
+    repo: deb [signed-by=/usr/share/keyrings/helm.asc] https://baltocdn.com/helm/stable/debian/ all main
+    state: present
+  tags:
+    - rke2
+    - rke_packages
+    - heml_packages
+    - helm
+
+- name: install helm
+  apt:
+    name: helm
+    state: latest
+    cache_valid_time: 86400
+  when: not ansible_check_mode # will fail in check mode if db isn't present
+  tags:
+    - rke2
+    - rke_packages
+    - helm
+    - heml_packages

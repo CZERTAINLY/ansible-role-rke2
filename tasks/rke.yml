@@ -1,0 +1,164 @@
+---
+- name: install RKE2 prerequisites
+  apt:
+    name:
+      - curl
+      - apparmor-utils
+      - iptables
+      - ca-certificates
+    state: latest
+    cache_valid_time: 86400
+  tags:
+    - rke2
+    - rke_packages
+
+- name: create RKE2 config dir
+  file:
+    path: /etc/rancher/rke2
+    state: directory
+  tags:
+    - rke2
+    - rke2_config_dir
+
+- name: create dir for various downloaded files
+  file:
+    path: /root/install
+    state: directory
+
+- name: configure RKE2 tls-san
+  ansible.builtin.template:
+    src: "config.j2"
+    dest: "/etc/rancher/rke2/config.yaml"
+  tags:
+    - rke2
+    - tls-san
+
+- name: configure PATH to kubectl in .bashrc
+  lineinfile: dest="/root/.bashrc"
+              regexp="^PATH=/var/lib/rancher/rke2/bin:"
+              line="PATH=/var/lib/rancher/rke2/bin:$PATH"
+              state=present
+  tags:
+    - rke2
+    - rke2_kubectl_path
+    - rke2_kubectl_path_bashrc
+
+- name: configure path to kubectl in .profile
+  lineinfile: dest="/root/.profile"
+              regexp="^PATH=/var/lib/rancher/rke2/bin:"
+              line="PATH=/var/lib/rancher/rke2/bin:$PATH"
+              state=present
+              insertbefore="^mesg n 2> /dev/null || true"
+  tags:
+    - rke2
+    - rke2_kubectl_path
+    - rke2_kubectl_path_profile
+
+# check_mode return changed in check mode, it was fixed in
+# Ansible 2.13.0, https://github.com/ansible/ansible/issues/65687
+- name: download rke2 installer
+  ansible.builtin.get_url:
+    url: https://get.rke2.io
+    dest: /usr/local/bin/rke2-install.sh
+    mode: '0755'
+    backup: true
+
+# versions of rke2 are listed here:
+#    https://github.com/ansible/ansible/issues/65687
+# but we are OK with any present
+- name: exec rke2 installer
+  ansible.builtin.shell:
+    cmd: /usr/local/bin/rke2-install.sh
+    creates: /usr/local/bin/rke2
+
+- name: enable & start rke service
+  ansible.builtin.systemd:
+    name: rke2-server.service
+    enabled: yes
+    masked: no
+    state: started
+
+# this and later command is needed to kubectl start working
+- name: create kube config dir
+  file:
+    path: /root/.kube
+    state: directory
+  tags:
+    - rke2
+    - kube_config
+    - kube_config_dir
+
+- name: copy kube config
+  ansible.builtin.copy:
+    src: /etc/rancher/rke2/rke2.yaml
+    dest: /root/.kube/config
+    owner: root
+    group: root
+    mode: '0600'
+
+- name: download cert-manager
+  ansible.builtin.get_url:
+    url: https://github.com/cert-manager/cert-manager/releases/download/v1.9.1/cert-manager.yaml
+    # upgrading this way doesn't work - it requires deleting whole namespace:
+    # `kubectl delete ns cert-manager` :(
+    # co zkusit zavlat apply z radky?
+    #url: https://github.com/cert-manager/cert-manager/releases/download/v1.10.1/cert-manager.yaml
+    dest: /root/install
+    mode: '0644'
+    backup: true
+
+# TODO install ansible-galaxy collection install kubernetes.core ; python3-kubernetes
+# TODO volat to aply jen pokud se neco v predchozim kroku stahne?
+- name: Apply cert-manager to k8s
+  kubernetes.core.k8s:
+    state: present
+    src: /root/install/cert-manager.yaml
+
+- name: download ingress-nginx/controller-v1.3.1
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.3.1/deploy/static/provider/cloud/deploy.yaml
+    dest: /root/install/ingress-nginx.controller-v1.3.1.deploy.yml
+    mode: '0644'
+    backup: true
+
+- name: deploy ingress-nginx to k8s
+  kubernetes.core.k8s:
+    state: present
+    src: /root/install/ingress-nginx.controller-v1.3.1.deploy.yml
+
+- name: check if ingress-nginx is patched
+  ansible.builtin.shell:
+    cmd: kubectl get deployment -n ingress-nginx ingress-nginx-controller -o json | jq '.spec.template.spec.containers[0].ports[] | select (.name == "https").hostPort'
+  changed_when: false
+  register:
+    patch_check
+
+- name: patch ingress-nginx
+  ansible.builtin.shell:
+    chdir: /etc/ansible/roles/rke2/files
+    cmd: kubectl patch deployment -n ingress-nginx ingress-nginx-controller --patch-file=ingres-host-ports.patch.json
+  when:
+    patch_check.stdout != '443'
+
+# this was suposed to be righgt way, but not working
+# - name: ingress nginx hostport ports
+#   kubernetes.core.k8s_json_patch:
+#     kind: Deployment
+#     namespace: ingress-nginx
+#     name: ingress-nginx-controller
+#     patch:
+#       - op: add,
+#         path: /spec/template/spec/containers/0/ports/0/hostPort
+#         value: 80
+#       - op: add
+#         path: /spec/template/spec/containers/0/ports/1/hostPort
+#         value: 443
+#       - op: add
+#         path: /spec/template/spec/containers/0/ports/2/hostPort
+#         value: 8443
+
+- name: update network policy
+  kubernetes.core.k8s:
+    namespace: default
+    state: present
+    src: /etc/ansible/roles/rke2/files/networkpolicy.yaml
