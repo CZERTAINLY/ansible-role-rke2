@@ -128,7 +128,7 @@
 
 - name: check if ingress-nginx is patched
   ansible.builtin.shell:
-    cmd: kubectl get deployment -n ingress-nginx ingress-nginx-controller -o json | jq '.spec.template.spec.containers[0].ports[] | select (.name == "https").hostPort'
+    cmd: /var/lib/rancher/rke2/bin/kubectl get deployment -n ingress-nginx ingress-nginx-controller -o json | jq '.spec.template.spec.containers[0].ports[] | select (.name == "https").hostPort'
   changed_when: false
   register:
     patch_check
@@ -136,7 +136,7 @@
 - name: patch ingress-nginx
   ansible.builtin.shell:
     chdir: /etc/ansible/roles/rke2/files
-    cmd: kubectl patch deployment -n ingress-nginx ingress-nginx-controller --patch-file=ingres-host-ports.patch.json
+    cmd: /var/lib/rancher/rke2/bin/kubectl patch deployment -n ingress-nginx ingress-nginx-controller --patch-file=ingres-host-ports.patch.json
   when:
     patch_check.stdout != '443'
 
