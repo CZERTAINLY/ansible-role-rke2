@@ -1,6 +1,8 @@
 ---
 - name: install helm
   include: helm.yml
+  tags: helm
 
-- name: install rke
+- name: install rke2
   include: rke.yml
+  tags: rke2
