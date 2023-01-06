@@ -1,0 +1,16 @@
+---
+- name: install helm
+  include: helm.yml
+  tags: helm
+
+- name: install rke2
+  include: rke.yml
+  tags: rke2
+
+- name: install cert-manager
+  include: cert-manager.yml
+  tags: cert-manager
+
+- name: install ingress-nginx
+  include: ingress-nginx.yml
+  tags: ingress-nginx

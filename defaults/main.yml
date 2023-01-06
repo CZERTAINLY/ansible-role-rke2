@@ -1,0 +1,4 @@
+---
+# defaults file for rke2
+
+ansible_python_interpreter: /usr/bin/python3

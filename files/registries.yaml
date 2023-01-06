@@ -1,0 +1,8 @@
+mirrors:
+  harbor.3key.company:
+    endpoint:
+      - "https://harbor.3key.company"
+configs:
+  "harbor.3key.company":
+    tls:
+      ca_file: /usr/local/share/ca-certificates/local/harbor-3key-company-chain.pem
