@@ -19,6 +19,6 @@
 
 - include: wait2complete.yml
   vars:
-    item: cert-manager
+    namespace: cert-manager
   tags:
     - cert-manager-wait

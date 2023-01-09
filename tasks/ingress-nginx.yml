@@ -49,8 +49,9 @@
   tags:
     - ingress-nginx_patch
 
-# - include: wait2complete.yml
-#   vars:
-#     item: ingress-nginx
-#   tags:
-#     - ingress-nginx_wait
+- include: wait2complete.yml
+  vars:
+    pod_name: ingress-nginx-controller
+    namespace: ingress-nginx
+  tags:
+    - ingress-nginx_wait
