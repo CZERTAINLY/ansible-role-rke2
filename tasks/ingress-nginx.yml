@@ -48,3 +48,9 @@
     patch_check.stdout != '443'
   tags:
     - ingress-nginx_patch
+
+# - include: wait2complete.yml
+#   vars:
+#     item: ingress-nginx
+#   tags:
+#     - ingress-nginx_wait

@@ -16,3 +16,9 @@
     src: /root/install/cert-manager.yaml
   tags:
     - cert-manager_install
+
+- include: wait2complete.yml
+  vars:
+    item: cert-manager
+  tags:
+    - cert-manager-wait

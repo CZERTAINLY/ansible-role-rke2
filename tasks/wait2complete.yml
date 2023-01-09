@@ -1,0 +1,9 @@
+---
+- name: "wait untill instalation of {{ item }} is complete (max 10min, delay=5s)"
+  shell:
+    cmd: "/var/lib/rancher/rke2/bin/kubectl -n {{ item }} get pods -o json |jq '.items[].status.phase' | grep -v Succeeded | sort -u"
+  register: prq
+  until: prq.stdout == '"Running"'
+  retries: 300
+  delay: 5
+  changed_when: false

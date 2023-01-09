@@ -106,3 +106,10 @@
     namespace: default
     state: present
     src: /etc/ansible/roles/rke2/files/networkpolicy.yaml
+
+- name: wait to complete instalation of rke2
+  include: wait2complete.yml
+  vars:
+    item: kube-system
+  tags:
+    kube-system-wait
