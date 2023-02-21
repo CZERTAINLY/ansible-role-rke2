@@ -1,10 +1,23 @@
 ---
-- name: install helm
-  include: helm.yml
-  tags: helm
+# https://docs.rke2.io/advanced
+- name: create /etc/default/rke2-server|agent
+  template:
+    src: "rke2-server-agent.j2"
+    dest: "/etc/default/{{ item }}"
+    owner: root
+    group: root
+    mode: '0644'
+  with_items:
+    - rke2-server
+    - rke2-agent
+  tags:
+    - rke2
+    - http_proxy
+  when:
+    proxy is defined
 
 - name: install rke2
-  include: rke.yml
+  include: rke2.yml
   tags: rke2
 
 - name: install ingress-nginx

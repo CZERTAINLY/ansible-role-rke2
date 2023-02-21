@@ -45,7 +45,7 @@
     chdir: /etc/ansible/roles/rke2/files
     cmd: /var/lib/rancher/rke2/bin/kubectl patch deployment -n ingress-nginx ingress-nginx-controller --patch-file=ingres-host-ports.patch.json
   when:
-    patch_check.stdout != '443'
+    (patch_check.stdout != '443') and (not ansible_check_mode)
   tags:
     - ingress-nginx_patch
 
@@ -55,3 +55,4 @@
     namespace: ingress-nginx
   tags:
     - ingress-nginx_wait
+  when: not ansible_check_mode

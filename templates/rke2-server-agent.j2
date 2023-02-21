@@ -1,0 +1,15 @@
+# do not modify directly - ansible managed
+
+{% if proxy is defined %}
+{% if proxy.http is defined %}
+HTTP_PROXY="{{ proxy.http }}"
+{% endif %}
+{% if proxy.https is defined %}
+HTTPS_PROXY="{{ proxy.https }}"
+{% endif %}
+{% if proxy.dont_use_for is defined %}
+NO_PROXY=127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.cluster.local,.local,{{ proxy.dont_use_for | join(', ') }}
+{% else %}
+NO_PROXY=127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.cluster.local,.local
+{% endif %}
+{% endif %}

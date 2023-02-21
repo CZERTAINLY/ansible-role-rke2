@@ -22,3 +22,4 @@
     namespace: cert-manager
   tags:
     - cert-manager-wait
+  when: not ansible_check_mode
