@@ -42,7 +42,7 @@
 #         value: 8443
 - name: patch ingress-nginx
   ansible.builtin.shell:
-    chdir: /etc/ansible/roles/rke2/files
+    chdir: "{{ role_path }}/files"
     cmd: /var/lib/rancher/rke2/bin/kubectl patch deployment -n ingress-nginx ingress-nginx-controller --patch-file=ingres-host-ports.patch.json
   when:
     (patch_check.stdout != '443') and (not ansible_check_mode)
