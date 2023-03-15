@@ -105,7 +105,7 @@
   kubernetes.core.k8s:
     namespace: default
     state: present
-    src: /etc/ansible/roles/rke2/files/networkpolicy.yaml
+    src: networkpolicy.yaml
   tags:
     - rke2_network-policy
 
