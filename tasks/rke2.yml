@@ -33,24 +33,16 @@
   tags:
     - rke2_tls-san
 
-- name: configure PATH to kubectl in .bashrc
-  lineinfile: dest="/root/.bashrc"
-              regexp="^PATH=/var/lib/rancher/rke2/bin:"
-              line="PATH=/var/lib/rancher/rke2/bin:$PATH"
-              state=present
+- name: configure PATH to kubectl for all users
+  ansible.builtin.copy:
+    src: rke2-bash-profile
+    dest: /etc/profile.d/rke2
+    owner: root
+    group: root
+    mode: '0755'
   tags:
     - rke2_kubectl_path
     - rke2_kubectl_path_bashrc
-
-- name: configure path to kubectl in .profile
-  lineinfile: dest="/root/.profile"
-              regexp="^PATH=/var/lib/rancher/rke2/bin:"
-              line="PATH=/var/lib/rancher/rke2/bin:$PATH"
-              state=present
-              insertbefore="^mesg n 2> /dev/null || true"
-  tags:
-    - rke2_kubectl_path
-    - rke2_kubectl_path_profile
 
 # check_mode return changed in check mode, it was fixed in
 # Ansible 2.13.0, https://github.com/ansible/ansible/issues/65687
