@@ -74,22 +74,30 @@
   tags:
     - rke2_enable_and_start
 
+- name: create var with paths
+  set_fact:
+    kube_cfg_dir:
+    - '/root/.kube'
+    - '/home/czertainly/.kube'
+
 # this and later command is needed to kubectl start working
 - name: create kube config dir
-  file:
-    path: /root/.kube
+  ansible.builtin.file:
+    path: "{{ item }}"
     state: directory
+  with_items: "{{ kube_cfg_dir }}"
   tags:
     - kube_config
     - kube_config_dir
 
 - name: copy kube config
-  ansible.builtin.copy:
+  ansible.builtin.file:
     src: /etc/rancher/rke2/rke2.yaml
-    dest: /root/.kube/config
+    dest: "{{ item }}/config"
     owner: root
     group: root
-    mode: '0600'
+    state: link
+  with_items: "{{ kube_cfg_dir }}"
   tags:
     - kube_config
 
