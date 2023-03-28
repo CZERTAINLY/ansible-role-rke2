@@ -36,7 +36,7 @@
 - name: configure PATH to kubectl for all users
   ansible.builtin.copy:
     src: rke2-bash-profile
-    dest: /etc/profile.d/rke2
+    dest: /etc/profile.d/rke2.sh
     owner: root
     group: root
     mode: '0755'
