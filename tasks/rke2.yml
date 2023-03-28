@@ -33,24 +33,16 @@
   tags:
     - rke2_tls-san
 
-- name: configure PATH to kubectl in .bashrc
-  lineinfile: dest="/root/.bashrc"
-              regexp="^PATH=/var/lib/rancher/rke2/bin:"
-              line="PATH=/var/lib/rancher/rke2/bin:$PATH"
-              state=present
+- name: configure PATH to kubectl for all users
+  ansible.builtin.copy:
+    src: rke2-bash-profile
+    dest: /etc/profile.d/rke2.sh
+    owner: root
+    group: root
+    mode: '0755'
   tags:
     - rke2_kubectl_path
     - rke2_kubectl_path_bashrc
-
-- name: configure path to kubectl in .profile
-  lineinfile: dest="/root/.profile"
-              regexp="^PATH=/var/lib/rancher/rke2/bin:"
-              line="PATH=/var/lib/rancher/rke2/bin:$PATH"
-              state=present
-              insertbefore="^mesg n 2> /dev/null || true"
-  tags:
-    - rke2_kubectl_path
-    - rke2_kubectl_path_profile
 
 # check_mode return changed in check mode, it was fixed in
 # Ansible 2.13.0, https://github.com/ansible/ansible/issues/65687
@@ -82,22 +74,30 @@
   tags:
     - rke2_enable_and_start
 
+- name: create var with paths
+  set_fact:
+    kube_cfg_dir:
+    - '/root/.kube'
+    - '/home/czertainly/.kube'
+
 # this and later command is needed to kubectl start working
 - name: create kube config dir
-  file:
-    path: /root/.kube
+  ansible.builtin.file:
+    path: "{{ item }}"
     state: directory
+  with_items: "{{ kube_cfg_dir }}"
   tags:
     - kube_config
     - kube_config_dir
 
 - name: copy kube config
-  ansible.builtin.copy:
+  ansible.builtin.file:
     src: /etc/rancher/rke2/rke2.yaml
-    dest: /root/.kube/config
+    dest: "{{ item }}/config"
     owner: root
     group: root
-    mode: '0600'
+    state: link
+  with_items: "{{ kube_cfg_dir }}"
   tags:
     - kube_config
 

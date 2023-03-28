@@ -1,0 +1,7 @@
+#!/bin/bash
+
+PATH=/var/lib/rancher/rke2/bin/:$PATH
+export PATH
+
+# set up autocomplete in bash into the current shell, bash-completion package should be installed first.
+source <(kubectl completion bash)
