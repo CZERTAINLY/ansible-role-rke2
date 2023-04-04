@@ -22,6 +22,7 @@
 
 - name: install ingress-nginx
   include: ingress-nginx.yml
+  when: rke2_install_ingress_nginx
   tags: ingress-nginx
 
 - name: install cert-manager
