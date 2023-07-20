@@ -16,6 +16,7 @@
 - name: create RKE2 config dir
   file:
     path: /etc/rancher/rke2
+    mode: 0750
     state: directory
   tags:
     - rke2_config_dir
@@ -75,6 +76,15 @@
   tags:
     - rke2_enable_and_start
 
+- name: fix permisons on /etc/rancher/rke2/rke2.yaml
+  ansible.builtin.file:
+    path: /etc/rancher/rke2/rke2.yaml
+    owner: root
+    group: root
+    mode: 0600
+  tags:
+    - kube_config
+
 - name: create var with paths
   set_fact:
     kube_cfg_dir:
@@ -106,7 +116,7 @@
   kubernetes.core.k8s:
     namespace: default
     state: present
-    src: networkpolicy.yaml
+    definition: "{{ lookup('file', 'networkpolicy.yaml') | from_yaml }}"
   tags:
     - rke2_network-policy
 
