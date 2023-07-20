@@ -19,6 +19,11 @@ If you have to use HTTP_PROXY to access Internet, please visit [ansible role htt
 ```
 - hosts: localhost
   connection: local
+  vars:
+    custom_kube_cfg_dir:
+      - owner: "semik"
+        group: "semik"
+        dir: "/home/semik/.kube"
 
   roles:
     - role: rke2
