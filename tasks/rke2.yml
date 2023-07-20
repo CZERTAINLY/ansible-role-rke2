@@ -2,10 +2,7 @@
 - name: install RKE2 prerequisites
   apt:
     name:
-      - curl
-      - apparmor-utils
       - iptables
-      - ca-certificates
       - python3-kubernetes
       - jq
     state: latest
