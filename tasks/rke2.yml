@@ -2,10 +2,9 @@
 - name: install RKE2 prerequisites
   apt:
     name:
-      - curl
-      - apparmor-utils
       - iptables
-      - ca-certificates
+      - python3-kubernetes
+      - jq
     state: latest
     cache_valid_time: 86400
   tags:
@@ -15,6 +14,7 @@
 - name: create RKE2 config dir
   file:
     path: /etc/rancher/rke2
+    mode: 0750
     state: directory
   tags:
     - rke2_config_dir
@@ -74,16 +74,28 @@
   tags:
     - rke2_enable_and_start
 
+- name: fix permisons on /etc/rancher/rke2/rke2.yaml
+  ansible.builtin.file:
+    path: /etc/rancher/rke2/rke2.yaml
+    owner: root
+    group: root
+    mode: 0600
+  tags:
+    - kube_config
+
 - name: create var with paths
   set_fact:
-    kube_cfg_dir:
-    - '/root/.kube'
-    - '/home/czertainly/.kube'
+    kube_cfg_dir: "{{ rke2_default_kube_cfg_dir + custom_kube_cfg_dir }}"
+  tags:
+    - kube_config
 
 # this and later command is needed to kubectl start working
 - name: create kube config dir
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: "{{ item.dir }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: 0750
     state: directory
   with_items: "{{ kube_cfg_dir }}"
   tags:
@@ -91,12 +103,13 @@
     - kube_config_dir
 
 - name: copy kube config
-  ansible.builtin.file:
+  ansible.builtin.copy:
     src: /etc/rancher/rke2/rke2.yaml
-    dest: "{{ item }}/config"
-    owner: root
-    group: root
-    state: link
+    remote_src: true
+    dest: "{{ item.dir }}/config"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: 0400
   with_items: "{{ kube_cfg_dir }}"
   tags:
     - kube_config
@@ -105,7 +118,7 @@
   kubernetes.core.k8s:
     namespace: default
     state: present
-    src: networkpolicy.yaml
+    definition: "{{ lookup('file', 'networkpolicy.yaml') | from_yaml }}"
   tags:
     - rke2_network-policy
 

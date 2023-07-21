@@ -2,3 +2,7 @@
 # vars file for rke2
 
 rke2_install_ingress_nginx: false
+rke2_default_kube_cfg_dir:
+  - owner: "root"
+    group: "root"
+    dir: "/root/.kube"
