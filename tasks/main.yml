@@ -1,4 +1,17 @@
 ---
+- name: check system resources
+  ansible.builtin.assert:
+    that:
+      - ansible_processor_vcpus >= 2
+        # There is some, not exact, reserved memory
+        # which is not accessible to userspace. Setting
+        # 4096 won't pass this assertion.
+      - ansible_memtotal_mb >= 3900
+    msg: RKE2 (kubernetes) needs at last two CPU and 4GB RAM
+  tags:
+    - rke2
+    - resources_assertion
+
 # https://docs.rke2.io/advanced
 - name: create /etc/default/rke2-server|agent
   template:
