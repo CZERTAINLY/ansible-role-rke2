@@ -41,7 +41,7 @@
 - name: install local-path-provisioner
   include: local-path-provisioner.yml
   when: rke2_install_local_path_provisioner
-  tags: ingress-nginx
+  tags: local-path-provisioner
 
 - name: install cert-manager
   include: cert-manager.yml
