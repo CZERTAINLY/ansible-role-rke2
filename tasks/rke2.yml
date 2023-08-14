@@ -85,7 +85,7 @@
 
 - name: create var with paths
   set_fact:
-    kube_cfg_dir: "{{ rke2_default_kube_cfg_dir + custom_kube_cfg_dir }}"
+    kube_cfg_dir: "{{ rke2_default_kube_cfg_dir + custom_kube_cfg_dir | default([]) }}"
   tags:
     - kube_config
 

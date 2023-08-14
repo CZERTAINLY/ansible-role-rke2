@@ -1,6 +1,6 @@
 ---
 # vars file for rke2
-
+rke2_install_local_path_provisioner: true
 rke2_install_ingress_nginx: false
 rke2_default_kube_cfg_dir:
   - owner: "root"
