@@ -21,3 +21,16 @@
   tags:
     - local-path-provisioner-wait
   when: not ansible_check_mode
+
+- name: set local-path-provisioner as default
+  kubernetes.core.k8s:
+    state: patched
+    api_version: storage.k8s.io/v1
+    kind: StorageClass
+    name: local-path
+    definition:
+      metadata:
+        annotations:
+          storageclass.kubernetes.io/is-default-class: "true"
+  tags:
+    - local-path-provisioner_patch
