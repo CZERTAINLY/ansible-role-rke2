@@ -123,7 +123,7 @@
     - rke2_network-policy
 
 - name: wait to start of instalation of rke2
-  include: wait2complete.yml
+  include_tasks: wait2complete.yml
   vars:
     pod_name: "kube-scheduler-{{ ansible_hostname }}"
     namespace: kube-system
@@ -132,7 +132,7 @@
   when: not ansible_check_mode
 
 - name: wait to complete instalation of rke2
-  include: wait2complete.yml
+  include_tasks: wait2complete.yml
   vars:
     namespace: kube-system
   tags:

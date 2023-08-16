@@ -15,7 +15,7 @@
   tags:
     - local-path-provisioner_install
 
-- include: wait2complete.yml
+- include_tasks: wait2complete.yml
   vars:
     namespace: local-path-storage
   tags:

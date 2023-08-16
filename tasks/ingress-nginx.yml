@@ -49,7 +49,7 @@
   tags:
     - ingress-nginx_patch
 
-- include: wait2complete.yml
+- include_tasks: wait2complete.yml
   vars:
     pod_name: ingress-nginx-controller
     namespace: ingress-nginx

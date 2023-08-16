@@ -16,7 +16,7 @@
   tags:
     - cert-manager_install
 
-- include: wait2complete.yml
+- include_tasks: wait2complete.yml
   vars:
     namespace: cert-manager
   tags:
