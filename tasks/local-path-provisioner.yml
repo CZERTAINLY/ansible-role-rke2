@@ -1,0 +1,36 @@
+---
+- name: download local-path-provisioner
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.24/deploy/local-path-storage.yaml
+    dest: /root/install
+    mode: '0644'
+    backup: true
+  tags:
+    - local-path-provisioner_download
+
+- name: apply local-path-provisioner to k8s
+  kubernetes.core.k8s:
+    state: present
+    src: /root/install/local-path-storage.yaml
+  tags:
+    - local-path-provisioner_install
+
+- include_tasks: wait2complete.yml
+  vars:
+    namespace: local-path-storage
+  tags:
+    - local-path-provisioner-wait
+  when: not ansible_check_mode
+
+- name: set local-path-provisioner as default
+  kubernetes.core.k8s:
+    state: patched
+    api_version: storage.k8s.io/v1
+    kind: StorageClass
+    name: local-path
+    definition:
+      metadata:
+        annotations:
+          storageclass.kubernetes.io/is-default-class: "true"
+  tags:
+    - local-path-provisioner_patch

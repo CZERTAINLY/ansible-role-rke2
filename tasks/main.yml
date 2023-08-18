@@ -30,15 +30,20 @@
     proxy is defined
 
 - name: install rke2
-  include: rke2.yml
+  include_tasks: rke2.yml
   tags: rke2
 
 - name: install ingress-nginx
-  include: ingress-nginx.yml
+  include_tasks: ingress-nginx.yml
   when: rke2_install_ingress_nginx
   tags: ingress-nginx
 
+- name: install local-path-provisioner
+  include_tasks: local-path-provisioner.yml
+  when: rke2_install_local_path_provisioner
+  tags: local-path-provisioner
+
 - name: install cert-manager
-  include: cert-manager.yml
+  include_tasks: cert-manager.yml
   tags: cert-manager
 

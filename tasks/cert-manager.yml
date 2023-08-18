@@ -9,7 +9,6 @@
   tags:
     - cert-manager_download
 
-# TODO volat to apply jen pokud se neco v predchozim kroku stahne?
 - name: Apply cert-manager to k8s
   kubernetes.core.k8s:
     state: present
@@ -17,7 +16,7 @@
   tags:
     - cert-manager_install
 
-- include: wait2complete.yml
+- include_tasks: wait2complete.yml
   vars:
     namespace: cert-manager
   tags:
