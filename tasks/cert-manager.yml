@@ -11,7 +11,7 @@
     release_name: cert-manager
     create_namespace: true
     chart_ref: jetstack/cert-manager
-    chart_version: v1.12.0
+    chart_version: "{{ rke2_certmanager_version }}"
     set_values:
       - value: installCRDs=true
   tags:
