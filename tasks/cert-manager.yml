@@ -1,18 +1,19 @@
 ---
-- name: download cert-manager
-  ansible.builtin.get_url:
-    url: https://github.com/cert-manager/cert-manager/releases/download/v1.9.1/cert-manager.yaml
-    #url: https://github.com/cert-manager/cert-manager/releases/download/v1.10.1/cert-manager.yaml
-    dest: /root/install
-    mode: '0644'
-    backup: true
-  tags:
-    - cert-manager_download
+- name: add cert-manager repository
+  kubernetes.core.helm_repository:
+    name: "{{ rke2_certmanager_helm_repository_name }}"
+    repo_url: "{{ rke2_certmanager_helm_repository_url }}"
 
-- name: Apply cert-manager to k8s
-  kubernetes.core.k8s:
-    state: present
-    src: /root/install/cert-manager.yaml
+- name: install cert-manager
+  kubernetes.core.helm:
+    timeout: 10m
+    release_namespace: cert-manager
+    release_name: cert-manager
+    create_namespace: true
+    chart_ref: jetstack/cert-manager
+    chart_version: "{{ rke2_certmanager_version }}"
+    set_values:
+      - value: installCRDs=true
   tags:
     - cert-manager_install
 

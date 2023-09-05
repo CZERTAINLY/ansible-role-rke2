@@ -2,3 +2,6 @@
 # defaults file for rke2
 
 ansible_python_interpreter: /usr/bin/python3
+rke2_certmanager_helm_repository_name: jetstack
+rke2_certmanager_helm_repository_url: https://charts.jetstack.io
+rke2_certmanager_version: v1.12.0
