@@ -1,10 +1,10 @@
 ---
-- name: add cert-manager repository
+- name: Add cert-manager repository
   kubernetes.core.helm_repository:
     name: "{{ rke2_certmanager_helm_repository_name }}"
     repo_url: "{{ rke2_certmanager_helm_repository_url }}"
 
-- name: install cert-manager
+- name: Install cert-manager
   kubernetes.core.helm:
     timeout: 10m
     release_namespace: cert-manager
@@ -17,7 +17,8 @@
   tags:
     - cert-manager_install
 
-- include_tasks: wait2complete.yml
+- name: Wait for installation to complete
+  ansible.builtin.include_tasks: wait2complete.yml
   vars:
     namespace: cert-manager
   tags:

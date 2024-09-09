@@ -1,39 +1,41 @@
 ---
-- name: install RKE2 prerequisites
-  apt:
+- name: Install RKE2 prerequisites
+  ansible.builtin.apt:
     name:
       - iptables
       - python3-kubernetes
       - jq
-    state: latest
+    state: present
     cache_valid_time: 86400
   tags:
     - rke2_packages
     - apt_packages
 
-- name: create RKE2 config dir
-  file:
+- name: Create RKE2 config dir
+  ansible.builtin.file:
     path: /etc/rancher/rke2
-    mode: 0750
+    mode: "0750"
     state: directory
   tags:
     - rke2_config_dir
 
-- name: create dir for various downloaded files
-  file:
+- name: Create dir for various downloaded files
+  ansible.builtin.file:
     path: /root/install
     state: directory
+    mode: "0755"
   tags:
     - rke2_root_install_dir
 
-- name: configure RKE2 tls-san
+- name: Configure RKE2 tls-san
   ansible.builtin.template:
     src: "config.j2"
     dest: "/etc/rancher/rke2/config.yaml"
+    mode: "0644"
   tags:
     - rke2_tls-san
 
-- name: configure PATH to kubectl for all users
+- name: Configure PATH to kubectl for all users
   ansible.builtin.copy:
     src: rke2-bash-profile
     dest: /etc/profile.d/rke2.sh
@@ -46,7 +48,7 @@
 
 # check_mode return changed in check mode, it was fixed in
 # Ansible 2.13.0, https://github.com/ansible/ansible/issues/65687
-- name: download rke2 installer
+- name: Download rke2 installer
   ansible.builtin.get_url:
     url: https://get.rke2.io
     dest: /usr/local/bin/rke2-install.sh
@@ -58,63 +60,63 @@
 # versions of rke2 are listed here:
 #    https://github.com/ansible/ansible/issues/65687
 # but we are OK with any present
-- name: exec rke2 installer
-  ansible.builtin.shell:
+- name: Exec rke2 installer
+  ansible.builtin.command:
     cmd: /usr/local/bin/rke2-install.sh
     creates: /usr/local/bin/rke2
   tags:
     - rke2_install
 
-- name: enable & start rke service
+- name: Enable & start rke service
   ansible.builtin.systemd:
     name: rke2-server.service
-    enabled: yes
-    masked: no
+    enabled: true
+    masked: false
     state: started
   tags:
     - rke2_enable_and_start
 
-- name: fix permisons on /etc/rancher/rke2/rke2.yaml
+- name: Fix permisons on /etc/rancher/rke2/rke2.yaml
   ansible.builtin.file:
     path: /etc/rancher/rke2/rke2.yaml
     owner: root
     group: root
-    mode: 0600
+    mode: "0600"
   tags:
     - kube_config
 
-- name: create var with paths
-  set_fact:
+- name: Create var with paths
+  ansible.builtin.set_fact:
     kube_cfg_dir: "{{ rke2_default_kube_cfg_dir + custom_kube_cfg_dir | default([]) }}"
   tags:
     - kube_config
 
 # this and later command is needed to kubectl start working
-- name: create kube config dir
+- name: Create kube config dir
   ansible.builtin.file:
     path: "{{ item.dir }}"
     owner: "{{ item.owner }}"
     group: "{{ item.group }}"
-    mode: 0750
+    mode: "0750"
     state: directory
   with_items: "{{ kube_cfg_dir }}"
   tags:
     - kube_config
     - kube_config_dir
 
-- name: copy kube config
+- name: Copy kube config
   ansible.builtin.copy:
     src: /etc/rancher/rke2/rke2.yaml
     remote_src: true
     dest: "{{ item.dir }}/config"
     owner: "{{ item.owner }}"
     group: "{{ item.group }}"
-    mode: 0400
+    mode: "0400"
   with_items: "{{ kube_cfg_dir }}"
   tags:
     - kube_config
 
-- name: update network policy
+- name: Update network policy
   kubernetes.core.k8s:
     namespace: default
     state: present
@@ -122,8 +124,8 @@
   tags:
     - rke2_network-policy
 
-- name: wait to start of instalation of rke2
-  include_tasks: wait2complete.yml
+- name: Wait to start of instalation of rke2
+  ansible.builtin.include_tasks: wait2complete.yml
   vars:
     pod_name: "kube-scheduler-{{ ansible_hostname }}"
     namespace: kube-system
@@ -131,8 +133,8 @@
     kube-system-wait
   when: not ansible_check_mode
 
-- name: wait to complete instalation of rke2
-  include_tasks: wait2complete.yml
+- name: Wait to complete instalation of rke2
+  ansible.builtin.include_tasks: wait2complete.yml
   vars:
     namespace: kube-system
   tags:

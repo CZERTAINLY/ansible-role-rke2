@@ -1,5 +1,5 @@
 ---
-- name: download ingress-nginx/controller-v1.3.1
+- name: Download ingress-nginx/controller-v1.3.1
   ansible.builtin.get_url:
     url: https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.3.1/deploy/static/provider/cloud/deploy.yaml
     dest: /root/install/ingress-nginx.controller-v1.3.1.deploy.yml
@@ -8,16 +8,18 @@
   tags:
     - ingress-nginx_download
 
-- name: deploy ingress-nginx to k8s
+- name: Deploy ingress-nginx to k8s
   kubernetes.core.k8s:
     state: present
     src: /root/install/ingress-nginx.controller-v1.3.1.deploy.yml
   tags:
     - ingress-nginx_install
 
-- name: check if ingress-nginx is patched
+- name: Check if ingress-nginx is patched
   ansible.builtin.shell:
-    cmd: /var/lib/rancher/rke2/bin/kubectl get deployment -n ingress-nginx ingress-nginx-controller -o json | jq '.spec.template.spec.containers[0].ports[] | select (.name == "https").hostPort'
+    cmd: |
+      /var/lib/rancher/rke2/bin/kubectl get deployment -n ingress-nginx ingress-nginx-controller -o json |
+        jq '.spec.template.spec.containers[0].ports[] | select (.name == "https").hostPort'
   changed_when: false
   register:
     patch_check
@@ -40,16 +42,19 @@
 #       - op: add
 #         path: /spec/template/spec/containers/0/ports/2/hostPort
 #         value: 8443
-- name: patch ingress-nginx
-  ansible.builtin.shell:
+- name: Patch ingress-nginx
+  ansible.builtin.command:
     chdir: "{{ role_path }}/files"
     cmd: /var/lib/rancher/rke2/bin/kubectl patch deployment -n ingress-nginx ingress-nginx-controller --patch-file=ingres-host-ports.patch.json
+  register: output
+  changed_when: output.rc != 0
   when:
     (patch_check.stdout != '443') and (not ansible_check_mode)
   tags:
     - ingress-nginx_patch
 
-- include_tasks: wait2complete.yml
+- name: Wait for installation to complete
+  ansible.builtin.include_tasks: wait2complete.yml
   vars:
     pod_name: ingress-nginx-controller
     namespace: ingress-nginx
