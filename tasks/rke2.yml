@@ -133,6 +133,15 @@
     kube-system-wait
   when: not ansible_check_mode
 
+- name: Wait for installation of rke2-ingress-nginx-controller
+  ansible.builtin.include_tasks: wait2complete.yml
+  vars:
+    pod_name: "rke2-ingress-nginx-controller"
+    namespace: kube-system
+  tags:
+    kube-system-wait
+  when: not ansible_check_mode
+
 - name: Wait to complete instalation of rke2
   ansible.builtin.include_tasks: wait2complete.yml
   vars:
