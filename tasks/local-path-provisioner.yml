@@ -1,7 +1,7 @@
 ---
 - name: Download local-path-provisioner
   ansible.builtin.get_url:
-    url: https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.24/deploy/local-path-storage.yaml
+    url: https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.29/deploy/local-path-storage.yaml
     dest: /root/install
     mode: '0644'
     backup: true
