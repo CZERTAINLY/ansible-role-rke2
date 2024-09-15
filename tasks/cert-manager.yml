@@ -4,6 +4,19 @@
     name: "{{ rke2_certmanager_helm_repository_name }}"
     repo_url: "{{ rke2_certmanager_helm_repository_url }}"
 
+- name: Check the last modified time of the Helm repo cache file
+  ansible.builtin.stat:
+    path: "{{ ansible_env.HOME }}/.cache/helm/repository/jetstack-index.yaml"
+  register: repo_cache
+
+- name: Update the repository cache
+  kubernetes.core.helm:
+    name: dummy
+    namespace: kube-system
+    state: absent
+    update_repo_cache: true
+  when: (repo_cache.stat.mtime | default(0)) < (ansible_date_time.epoch | int - 86400)
+
 - name: Install cert-manager
   kubernetes.core.helm:
     timeout: 10m
