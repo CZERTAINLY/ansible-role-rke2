@@ -30,19 +30,31 @@
     proxy is defined
 
 - name: Install rke2
-  ansible.builtin.include_tasks: rke2.yml
+  ansible.builtin.include_tasks:
+    file: rke2.yml
+    apply:
+      tags: rke2
   tags: rke2
 
 - name: Install ingress-nginx
-  ansible.builtin.include_tasks: ingress-nginx.yml
-  when: rke2_install_ingress_nginx
+  ansible.builtin.include_tasks:
+    file: ingress-nginx.yml
+    apply:
+      tags: ingress-nginx
   tags: ingress-nginx
+  when: rke2_install_ingress_nginx
 
 - name: Install local-path-provisioner
-  ansible.builtin.include_tasks: local-path-provisioner.yml
-  when: rke2_install_local_path_provisioner
+  ansible.builtin.include_tasks:
+    file: local-path-provisioner.yml
+    apply:
+      tags: local-path-provisioner
   tags: local-path-provisioner
+  when: rke2_install_local_path_provisioner
 
 - name: Install cert-manager
-  ansible.builtin.include_tasks: cert-manager.yml
+  ansible.builtin.include_tasks:
+    file: cert-manager.yml
+    apply:
+      tags: cert-manager
   tags: cert-manager
