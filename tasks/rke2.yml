@@ -111,7 +111,7 @@
     dest: "{{ item.dir }}/config"
     owner: "{{ item.owner }}"
     group: "{{ item.group }}"
-    mode: "0400"
+    mode: "0600"
   with_items: "{{ kube_cfg_dir }}"
   tags:
     - kube_config
