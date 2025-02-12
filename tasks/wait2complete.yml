@@ -2,7 +2,7 @@
 - name: "Wait untill {{ pod_name }} in {{ namespace }} is Running (max 10min, delay=5s)" # noqa name[template]
   ansible.builtin.shell:
     cmd: |
-      test `/var/lib/rancher/rke2/bin/kubectl -n {{ namespace }} get pod  |grep {{ pod_name }} | grep Running | wc -l` -ge 1
+      test `/var/lib/rancher/rke2/bin/kubectl -n {{ namespace }} get pod |grep -i {{ pod_name }} | grep Running | wc -l` -ge 1
     executable: /bin/bash
   register: prq
   until: prq.rc == 0
