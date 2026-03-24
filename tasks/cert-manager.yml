@@ -33,7 +33,7 @@
 - name: Wait for installation to complete
   ansible.builtin.include_tasks: wait2complete.yml
   vars:
-    namespace: cert-manager
+    k8s_namespace: cert-manager
   tags:
     - cert-manager-wait
   when: not ansible_check_mode

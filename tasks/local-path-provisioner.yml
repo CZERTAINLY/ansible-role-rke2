@@ -18,7 +18,7 @@
 - name: Wait for installation to complete
   ansible.builtin.include_tasks: wait2complete.yml
   vars:
-    namespace: local-path-storage
+    k8s_namespace: local-path-storage
   tags:
     - local-path-provisioner-wait
   when: not ansible_check_mode

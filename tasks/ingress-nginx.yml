@@ -57,7 +57,7 @@
   ansible.builtin.include_tasks: wait2complete.yml
   vars:
     pod_name: ingress-nginx-controller
-    namespace: ingress-nginx
+    k8s_namespace: ingress-nginx
   tags:
     - ingress-nginx_wait
   when: not ansible_check_mode
