@@ -128,7 +128,7 @@
   ansible.builtin.include_tasks: wait2complete.yml
   vars:
     pod_name: "kube-scheduler-{{ ansible_hostname }}"
-    namespace: kube-system
+    k8s_namespace: kube-system
   tags:
     kube-system-wait
   when: not ansible_check_mode
@@ -137,7 +137,7 @@
   ansible.builtin.include_tasks: wait2complete.yml
   vars:
     pod_name: "rke2-ingress-nginx-controller"
-    namespace: kube-system
+    k8s_namespace: kube-system
   tags:
     kube-system-wait
   when: not ansible_check_mode
@@ -145,7 +145,7 @@
 - name: Wait to complete instalation of rke2
   ansible.builtin.include_tasks: wait2complete.yml
   vars:
-    namespace: kube-system
+    k8s_namespace: kube-system
   tags:
     kube-system-wait
   when: not ansible_check_mode
