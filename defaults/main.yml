@@ -4,31 +4,15 @@
 ansible_python_interpreter: /usr/bin/python3
 rke2_certmanager_helm_repository_name: jetstack
 rke2_certmanager_helm_repository_url: https://charts.jetstack.io
-# Which cert-manager release to install. This is the role level fallback;
-# on the ILM appliance it is overridden from /etc/ilm-ansible/vars/rke2.yml
-# through rke2.certmanager_version.
-#
-# Helm upgrades cert-manager in place whenever this changes, so no
-# allow_upgrade is needed here, but a downgrade and a jump over a minor
-# release are refused - cert-manager supports neither, see
-# https://cert-manager.io/docs/installation/upgrade/
+
+# Role level fallbacks, used when /etc/ilm-ansible/vars/rke2.yml doesn't set
+# the matching key of the 'rke2' dict. vars/main.yml combines the two.
+
+# Which cert-manager release Helm installs into the cluster.
 rke2_default_certmanager_version: v1.21.1
-# Which local-path-provisioner release to install. This is the role level
-# fallback; on the ILM appliance it is overridden from
-# /etc/ilm-ansible/vars/rke2.yml through
-# rke2.local_path_provisioner_version.
-#
-# Applying the manifest of a newer release upgrades it in place, so no
-# allow_upgrade is needed here either. A downgrade and a jump over a minor
-# release are refused. Releases are numbered v0.0.x, so in practice every
-# upgrade is a patch bump and only downgrades are ever refused. There are
-# no CRDs involved.
+# Which local-path-provisioner release provides the default storage class.
 rke2_default_local_path_provisioner_version: v0.0.36
 
-# Which RKE2 release to install. These are the role level fallbacks; on
-# the ILM appliance they are overridden from /etc/ilm-ansible/vars/rke2.yml
-# through the 'rke2' dict (rke2.channel / rke2.version).
-#
 # Passed to the installer as INSTALL_RKE2_CHANNEL. Accepts 'stable',
 # 'latest', 'testing' or a minor release channel such as 'v1.32'. See
 # https://update.rke2.io/v1-release/channels
@@ -36,15 +20,9 @@ rke2_default_channel: stable
 # Passed to the installer as INSTALL_RKE2_VERSION, e.g. v1.32.5+rke2r1.
 # Takes precedence over the channel. Empty means "resolve the channel".
 rke2_default_version: ""
-# By default the role installs RKE2 only once and never upgrades it, it
-# only warns when an exact version is configured and a different one is
-# already installed. Set this to true to let it upgrade RKE2 in place,
-# which stops and starts the Kubernetes cluster. Only an exact
-# rke2_default_version / rke2.version can be upgraded to, a channel is
-# resolved by the installer and there is nothing to compare it with.
-# Downgrades and jumps over a Kubernetes minor release are refused.
+# By default the role installs RKE2 only once and never upgrades it. Set
+# this to true to let it upgrade an installed RKE2 in place, which stops and
+# starts the Kubernetes cluster. Only an exact rke2_default_version /
+# rke2.version can be upgraded to, a channel is resolved by the installer
+# and there is nothing to compare it with.
 rke2_allow_upgrade: false
-# When an exact version is configured, a different one is installed and
-# the upgrade doesn't happen, the role warns. Set this to true to make
-# such a mismatch fatal instead.
-rke2_fail_on_version_mismatch: false

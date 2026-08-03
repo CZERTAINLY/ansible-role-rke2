@@ -46,68 +46,15 @@
     - rke2_kubectl_path
     - rke2_kubectl_path_bashrc
 
-# Which release to install is configured on the ILM appliance in
-# /etc/ilm-ansible/vars/rke2.yml. When that file is empty or fully
-# commented out the 'rke2' dict is undefined and the role level
-# fallbacks from defaults/main.yml are used. The second argument of
-# default() is important, it makes an empty value in the yaml file
-# (e.g. "channel:" with nothing behind it) fall back as well.
-#
-# allow_upgrade is a boolean, so it must not use the second argument of
-# default(). 'false | default(x, true)' returns x, because false is
-# falsy, which would turn an explicit "allow_upgrade: false" into the
-# opposite of what was asked for.
-- name: Determine which RKE2 release is requested
-  ansible.builtin.set_fact:
-    rke2_channel: "{{ rke2.channel | default(rke2_default_channel, true) }}"
-    rke2_requested_version: "{{ rke2.version | default(rke2_default_version, true) }}"
-    rke2_upgrade_allowed: "{{ rke2.allow_upgrade | default(rke2_allow_upgrade) }}"
-  tags:
-    - rke2_version
-    - rke2_install
-
-- name: Verify that the requested RKE2 version is a valid release
-  ansible.builtin.assert:
-    that:
-      - rke2_requested_version is match('^v?[0-9]+[.][0-9]+[.][0-9]+[+]rke2r[0-9]+$')
-    fail_msg: >-
-      rke2.version '{{ rke2_requested_version }}' is not a valid RKE2
-      release. Expected something like v1.32.5+rke2r1, see
-      https://github.com/rancher/rke2/releases . Leave rke2.version
-      empty to install the newest release of the
-      '{{ rke2_channel }}' channel.
-  when: rke2_requested_version | length > 0
-  tags:
-    - rke2_version
-    - rke2_install
-
-- name: Normalize the requested RKE2 version
-  ansible.builtin.set_fact:
-    rke2_version: "{{ rke2_requested_version | regex_replace('^v?', 'v') if rke2_requested_version | length > 0 else '' }}"
-  tags:
-    - rke2_version
-    - rke2_install
-
-- name: Will install RKE2 {{ rke2_version | default('', true) or rke2_channel }}
-  ansible.builtin.debug:
-    msg: >-
-      rke2_channel: {{ rke2_channel }};
-      rke2_version: {{ rke2_version | default('<newest of channel>', true) }}
-  tags:
-    - rke2_version
-    - rke2_install
-
 - name: Look for an installed rke2 binary
   ansible.builtin.stat:
     path: /usr/local/bin/rke2
   register: rke2_binary
   tags:
-    - rke2_version
     - rke2_install
 
-# check_mode: false is needed to get stdout also during --check runs.
-# failed_when: false because a broken binary must not abort the run,
-# the comparison below reports 'unknown' in that case.
+# check_mode: false to get stdout during --check too; failed_when: false so a
+# broken binary doesn't abort the run.
 - name: Read the version of the installed rke2
   ansible.builtin.command: /usr/local/bin/rke2 --version
   register: rke2_version_cmd
@@ -116,108 +63,39 @@
   failed_when: false
   when: rke2_binary.stat.exists
   tags:
-    - rke2_version
     - rke2_install
 
-# 'rke2 --version' prints two lines:
-#   rke2 version v1.32.5+rke2r1 (0e3a4d1b7d)
-#   go version go1.23.6 X:boringcrypto
-#
-# The backreference form of regex_search (passing "\1" to get just the
-# capture group) can't be used here. Its argument parser calls .group()
-# on an unchecked re.match, so depending on how many layers of backslash
-# unescaping the argument passes through it dies with
-#   'NoneType' object has no attribute 'group'
-# regardless of whether the pattern matched. So the whole match is taken
-# and the prefix is cut off instead, which keeps the expression free of
-# backslashes. Without group arguments regex_search returns None when
-# nothing matches, hence the default() that turns it into an empty
-# string, and the second one that reports an unreadable binary.
-- name: Note the version of the installed rke2
+# 'rke2 version v1.35.5+rke2r1 (0e3a4d1b)' -> v1.35.5+rke2r1. regex_search
+# returns None when there is nothing to match, hence the default().
+- name: Note which RKE2 is installed
   ansible.builtin.set_fact:
     rke2_installed_version: >-
-      {{ rke2_version_cmd.stdout | default('') | regex_search('rke2 version [^ ]+')
-      | default('', true) | replace('rke2 version ', '') | default('unknown', true) }}
-  when: rke2_binary.stat.exists
+      {{ rke2_version_cmd.stdout | default('')
+      | regex_search('v[0-9.]+[+]rke2r[0-9]+') | default('', true) }}
   tags:
-    - rke2_version
     - rke2_install
 
-# A comparison is only possible when an exact version is configured, a
-# channel like 'stable' is resolved by the installer and there is nothing
-# to compare it with locally.
-#
-# The normalized forms turn v1.35.6+rke2r1 into 1.35.6.1, so that plain
-# numeric version comparison works and a new rke2 revision of the same
-# Kubernetes release (rke2r1 -> rke2r2) counts as newer as well.
-- name: Compare installed RKE2 with the configured version
-  ansible.builtin.set_fact:
-    rke2_version_differs: "{{ rke2_version | length > 0
-                              and rke2_installed_version | default('') | length > 0
-                              and rke2_installed_version != rke2_version }}"
-    rke2_installed_norm: "{{ rke2_installed_version | default('')
-                             | regex_replace('^v', '') | replace('+rke2r', '.') }}"
-    rke2_target_norm: "{{ rke2_version | regex_replace('^v', '') | replace('+rke2r', '.') }}"
-  tags:
-    - rke2_version
-    - rke2_install
-
-# Everything that stands in the way of an in place upgrade, as one
-# message fragment. Empty means the upgrade may go ahead. The branches
-# are evaluated lazily, so the ones which take the versions apart are
-# only reached once the installed version is known to be a plain release.
-#
-# Kubernetes has to be upgraded one minor release at a time and it can't
-# be downgraded at all, so both are refused instead of breaking etcd or
-# the control plane.
-- name: Decide whether RKE2 may be upgraded
-  ansible.builtin.set_fact:
-    rke2_upgrade_blocked_reason: >-
-      {{ ''
-         if not rke2_version_differs | bool
-         else ("rke2.allow_upgrade isn't enabled"
-         if not rke2_upgrade_allowed | bool
-         else ("the installed RKE2 doesn't report a plain release version"
-         if not rke2_installed_version is match('^v?[0-9]+[.][0-9]+[.][0-9]+[+]rke2r[0-9]+$')
-         else ("it would be a downgrade of Kubernetes, which isn't supported"
-         if not rke2_target_norm is version(rke2_installed_norm, '>')
-         else ("it would skip a Kubernetes minor release, they have to be installed one at a time"
-         if (rke2_target_norm.split('.')[0] | int) != (rke2_installed_norm.split('.')[0] | int)
-            or (rke2_target_norm.split('.')[1] | int) - (rke2_installed_norm.split('.')[1] | int) > 1
-         else '')))) }}
-  tags:
-    - rke2_version
-    - rke2_install
-
-- name: Note what is going to be done with RKE2
+# An upgrade is only possible towards an exact version - a channel is resolved
+# by the installer, there is nothing to compare locally - and only when the
+# operator allowed it, because it stops and starts the cluster.
+- name: Decide what to do with RKE2
   ansible.builtin.set_fact:
     rke2_needs_install: "{{ not rke2_binary.stat.exists }}"
-    rke2_needs_upgrade: "{{ rke2_version_differs | bool
-                            and rke2_upgrade_blocked_reason | length == 0 }}"
-    rke2_version_mismatch: "{{ rke2_version_differs | bool
-                               and rke2_upgrade_blocked_reason | length > 0 }}"
-    rke2_version_mismatch_msg: >-
-      RKE2 {{ rke2_installed_version | default('unknown') }} is installed,
-      but rke2.version in /etc/ilm-ansible/vars/rke2.yml asks for
-      {{ rke2_version }}. It is not being changed, because
-      {{ rke2_upgrade_blocked_reason }}. Replacing RKE2 by hand means
-      uninstalling it with /usr/local/bin/rke2-uninstall.sh, which
-      destroys the Kubernetes cluster and all ILM workloads, and
-      installing ILM again.
+    rke2_needs_upgrade: "{{ rke2_binary.stat.exists
+                            and rke2_version | length > 0
+                            and rke2_version != rke2_installed_version
+                            and rke2_upgrade_allowed | bool }}"
   tags:
-    - rke2_version
     - rke2_install
 
-- name: Report which RKE2 is installed
+- name: Report what is going to be done with RKE2
   ansible.builtin.debug:
     msg: >-
-      installed RKE2: {{ rke2_installed_version | default('none yet') }};
-      configured: {{ ('version ' ~ rke2_version) if rke2_version | length > 0
-                     else ('newest of channel ' ~ rke2_channel) }};
+      installed: {{ rke2_installed_version | default('none', true) }};
+      configured: {{ rke2_version | default('channel ' ~ rke2_channel, true) }};
       action: {{ 'install' if rke2_needs_install | bool
                  else ('upgrade' if rke2_needs_upgrade | bool else 'none') }}
   tags:
-    - rke2_version
     - rke2_install
 
 # check_mode return changed in check mode, it was fixed in
@@ -237,27 +115,19 @@
 # timestamp to the name on its own.
 - name: Save an etcd snapshot before upgrading RKE2
   ansible.builtin.command:
-    cmd: >-
-      /usr/local/bin/rke2 etcd-snapshot save
-      --name pre-upgrade-{{ rke2_installed_norm }}-to-{{ rke2_target_norm }}
+    cmd: /usr/local/bin/rke2 etcd-snapshot save --name pre-upgrade
   changed_when: true
   when: rke2_needs_upgrade | bool
   tags:
     - rke2_install
-    - rke2_upgrade
 
 # The installer resolves INSTALL_RKE2_CHANNEL against
 # https://update.rke2.io/v1-release/channels , but only when
 # INSTALL_RKE2_VERSION is empty, so exactly one of the two is exported.
-# The '+' of a version like v1.32.5+rke2r1 is url-escaped by the
-# installer itself, it has to be passed verbatim.
-#
-# The environment of the play (HTTP proxy) is merged with the one below,
-# task level keys only override play level keys of the same name.
 #
 # There is no 'creates', the conditions above decide when the installer
-# runs. On a re-run it only replaces the binary under /usr/local/bin and
-# reloads systemd, it doesn't restart the service, that is done below.
+# runs. It only replaces the binary under /usr/local/bin and reloads
+# systemd, it doesn't restart the service, that is done below.
 - name: Exec rke2 installer
   ansible.builtin.command:
     cmd: /usr/local/bin/rke2-install.sh
@@ -278,7 +148,6 @@
   when: rke2_needs_upgrade | bool
   tags:
     - rke2_install
-    - rke2_upgrade
 
 # Waiting for the node to report the new version proves both that the API
 # server came back and that the upgrade really took effect. kubeletVersion
@@ -298,27 +167,6 @@
     - rke2_needs_upgrade | bool
     - not ansible_check_mode
   tags:
-    - rke2_install
-    - rke2_upgrade
-
-- name: Warn that the installed RKE2 isn't the configured one
-  ansible.builtin.debug:
-    msg: "WARNING: {{ rke2_version_mismatch_msg }}"
-  when:
-    - rke2_version_mismatch | bool
-    - not (rke2_fail_on_version_mismatch | bool)
-  tags:
-    - rke2_version
-    - rke2_install
-
-- name: Fail because the installed RKE2 isn't the configured one
-  ansible.builtin.fail:
-    msg: "{{ rke2_version_mismatch_msg }}"
-  when:
-    - rke2_version_mismatch | bool
-    - rke2_fail_on_version_mismatch | bool
-  tags:
-    - rke2_version
     - rke2_install
 
 - name: Enable & start rke service

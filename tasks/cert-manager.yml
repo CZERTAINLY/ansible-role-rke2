@@ -1,23 +1,4 @@
 ---
-# Which release to install is configured on the ILM appliance in
-# /etc/ilm-ansible/vars/rke2.yml. When that file doesn't set
-# certmanager_version the role level fallback from defaults/main.yml is
-# used. The second argument of default() makes an empty value in the yaml
-# file fall back as well.
-- name: Determine which cert-manager release is requested
-  ansible.builtin.set_fact:
-    rke2_certmanager_version: "{{ rke2.certmanager_version
-                                  | default(rke2_default_certmanager_version, true) }}"
-
-- name: Verify that the requested cert-manager version is a valid release
-  ansible.builtin.assert:
-    that:
-      - rke2_certmanager_version is match('^v[0-9]+[.][0-9]+[.][0-9]+([-+][0-9A-Za-z.-]+)?$')
-    fail_msg: >-
-      rke2.certmanager_version '{{ rke2_certmanager_version }}' is not a
-      valid cert-manager release. Expected something like v1.21.1, see
-      https://github.com/cert-manager/cert-manager/releases
-
 - name: Add cert-manager repository
   kubernetes.core.helm_repository:
     name: "{{ rke2_certmanager_helm_repository_name }}"
@@ -36,65 +17,11 @@
     update_repo_cache: true
   when: (repo_cache.stat.mtime | default(0)) < (ansible_date_time.epoch | int - 86400)
 
-# 'status' is only returned when the release exists, a missing one is
-# neither an error nor a failure of this module.
-- name: Look for an installed cert-manager release
-  kubernetes.core.helm_info:
-    release_name: cert-manager
-    release_namespace: cert-manager
-  register: rke2_certmanager_release
-  check_mode: false
-
-# status.chart is the chart name and version together, e.g.
-# "cert-manager-v1.21.1". An empty result means cert-manager isn't
-# installed yet and there is nothing to compare.
-- name: Note the version of the installed cert-manager
-  ansible.builtin.set_fact:
-    rke2_certmanager_installed: >-
-      {{ rke2_certmanager_release.status.chart | default('')
-      | replace('cert-manager-', '') }}
-
-- name: Compare installed cert-manager with the configured version
-  ansible.builtin.set_fact:
-    rke2_certmanager_installed_norm: "{{ rke2_certmanager_installed | regex_replace('^v', '') }}"
-    rke2_certmanager_target_norm: "{{ rke2_certmanager_version | regex_replace('^v', '') }}"
-
-# Helm would happily apply any chart version, including one that goes
-# backwards or skips several releases, and it upgrades the CRDs along with
-# the chart because of installCRDs below. cert-manager supports neither,
-# so those two moves are refused and the Install task is skipped, which
-# leaves the running cert-manager untouched.
-#
-# Empty means "go ahead", which also covers a fresh install and the case
-# where the installed version is already the configured one.
-- name: Decide whether cert-manager may be changed
-  ansible.builtin.set_fact:
-    rke2_certmanager_blocked_reason: >-
-      {{ ''
-         if rke2_certmanager_installed | length == 0
-            or rke2_certmanager_installed == rke2_certmanager_version
-         else ("the installed cert-manager doesn't report a plain release version"
-         if not rke2_certmanager_installed is match('^v[0-9]+[.][0-9]+[.][0-9]+')
-         else ("it would be a downgrade, which cert-manager doesn't support"
-         if not rke2_certmanager_target_norm is version(rke2_certmanager_installed_norm, '>')
-         else ("it would skip a cert-manager minor release, those have to be installed one at a time"
-         if (rke2_certmanager_target_norm.split('.')[0] | int)
-            != (rke2_certmanager_installed_norm.split('.')[0] | int)
-            or (rke2_certmanager_target_norm.split('.')[1] | int)
-               - (rke2_certmanager_installed_norm.split('.')[1] | int) > 1
-         else ''))) }}
-
-- name: Report which cert-manager is installed
-  ansible.builtin.debug:
-    msg: >-
-      installed cert-manager: {{ rke2_certmanager_installed | default('none yet', true) }};
-      configured: {{ rke2_certmanager_version }};
-      action: {{ 'none'
-                 if rke2_certmanager_blocked_reason | length > 0
-                    or rke2_certmanager_installed == rke2_certmanager_version
-                 else ('install' if rke2_certmanager_installed | length == 0 else 'upgrade') }}
-
-- name: Install cert-manager
+# Helm installs or upgrades to chart_version as needed, so changing
+# rke2.certmanager_version is enough to move cert-manager. Whether the new
+# release can be reached from the running one in one step is up to the
+# operator, see https://cert-manager.io/docs/installation/upgrade/
+- name: Install cert-manager {{ rke2_certmanager_version }}
   kubernetes.core.helm:
     timeout: 10m
     release_namespace: cert-manager
@@ -104,33 +31,8 @@
     chart_version: "{{ rke2_certmanager_version }}"
     set_values:
       - value: installCRDs=true
-  when: rke2_certmanager_blocked_reason | length == 0
   tags:
     - cert-manager_install
-
-- name: Warn that the installed cert-manager isn't the configured one
-  ansible.builtin.debug:
-    msg: "WARNING: {{ rke2_certmanager_blocked_reason_msg }}"
-  vars:
-    rke2_certmanager_blocked_reason_msg: >-
-      cert-manager {{ rke2_certmanager_installed }} is installed, but
-      rke2.certmanager_version in /etc/ilm-ansible/vars/rke2.yml asks for
-      {{ rke2_certmanager_version }}. It is not being changed, because
-      {{ rke2_certmanager_blocked_reason }}.
-  when:
-    - rke2_certmanager_blocked_reason | length > 0
-    - not (rke2_fail_on_version_mismatch | bool)
-
-- name: Fail because the installed cert-manager isn't the configured one
-  ansible.builtin.fail:
-    msg: >-
-      cert-manager {{ rke2_certmanager_installed }} is installed, but
-      rke2.certmanager_version in /etc/ilm-ansible/vars/rke2.yml asks for
-      {{ rke2_certmanager_version }}. It is not being changed, because
-      {{ rke2_certmanager_blocked_reason }}.
-  when:
-    - rke2_certmanager_blocked_reason | length > 0
-    - rke2_fail_on_version_mismatch | bool
 
 - name: Wait for installation to complete
   ansible.builtin.include_tasks: wait2complete.yml

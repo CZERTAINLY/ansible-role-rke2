@@ -6,3 +6,17 @@ rke2_default_kube_cfg_dir:
   - owner: "root"
     group: "root"
     dir: "/root/.kube"
+
+# What /etc/ilm-ansible/vars/rke2.yml asks for, with the defaults/main.yml
+# fallback. The 'rke2' dict is undefined when that file is empty; default()
+# covers that, and its second argument covers an empty value as well, e.g.
+# "channel:" with nothing behind it.
+rke2_channel: "{{ rke2.channel | default(rke2_default_channel, true) }}"
+rke2_version: "{{ rke2.version | default(rke2_default_version, true) }}"
+# A boolean must not use the second argument of default(): 'false' is falsy,
+# so an explicit "allow_upgrade: false" would flip to the fallback.
+rke2_upgrade_allowed: "{{ rke2.allow_upgrade | default(rke2_allow_upgrade) }}"
+rke2_certmanager_version: "{{ rke2.certmanager_version
+                              | default(rke2_default_certmanager_version, true) }}"
+rke2_local_path_provisioner_version: "{{ rke2.local_path_provisioner_version | default(
+                                         rke2_default_local_path_provisioner_version, true) }}"
