@@ -1,21 +1,22 @@
 # Ansible Role: rke2
 
-Install [rke2](https://docs.rke2.io/) + ingress-nginx and certmanager on Debian GNU/Linux.
+Install [rke2](https://docs.rke2.io/) on Debian GNU/Linux, together with
+[cert-manager](https://cert-manager.io/) and
+[local-path-provisioner](https://github.com/rancher/local-path-provisioner),
+which provides the default storage class. ingress-nginx can be deployed as
+well, but is off by default - see the role level variables below.
 
 ## Requirements
 The role is designed for [Debian GNU/Linux](https://debian.org).
 
 ## Role Variables
 
-```
-ingress:
-  certificate_file: certificate-for-https-server
-  private_key_file: private-key-for-https-server
-```
-
-Which release of RKE2 is installed. All keys are optional, the default is
-the newest release of the `stable` channel, installed once and never
-upgraded.
+Which release of RKE2 is installed, and which cert-manager and
+local-path-provisioner go with it, is configured through a single `rke2`
+dict. On the ILM appliance that dict lives in
+`/etc/ilm-ansible/vars/rke2.yml` and is loaded by `playbooks/ilm.yml` with
+`include_vars`. All keys are optional, the default is the newest release of
+the `stable` channel, installed once and never upgraded.
 
 ```
 rke2:
@@ -32,8 +33,18 @@ rke2:
   local_path_provisioner_version: v0.0.36
 ```
 
-By default the role installs RKE2 only once, and on later runs it only
-reports that the installed version differs from the configured one. With
+Every run reports which RKE2 is installed, which one is configured and what
+the role is about to do:
+
+```
+TASK [rke2 : Report what is going to be done with RKE2] ***
+ok: [ilm] => {
+    "msg": "installed: v1.35.5+rke2r1; configured: v1.35.6+rke2r1; action: none"
+}
+```
+
+By default the role installs RKE2 only once, so on later runs the action is
+`none` even when the configured version has changed since. With
 `allow_upgrade: true` it upgrades in place instead, following the
 [documented procedure](https://docs.rke2.io/upgrades/manual): re-run the
 installer, then restart `rke2-server`. That stops and starts the
@@ -47,7 +58,7 @@ the role leaves an existing installation alone.
 
 Whether the configured release can be reached from the running one is up to
 the operator - the role doesn't check it. Kubernetes can't be downgraded,
-and minor releases have to be installed one at a time (e.g. 1.34 → 1.35 →
+and minor releases have to be installed one at a time (e.g. 1.34 -> 1.35 ->
 1.36).
 
 ### cert-manager and local-path-provisioner
@@ -71,7 +82,11 @@ contains the version. A fixed name can go stale - `get_url` would send
 release tagged earlier than that download answers `304 Not Modified`,
 leaving the old manifest in place to be applied again.
 
-Role level fallbacks, used when the `rke2` dict isn't defined at all:
+### Role level variables
+
+Fallbacks from [defaults/main.yml](defaults/main.yml), used for every key
+the `rke2` dict above doesn't set - including the case where it isn't
+defined at all, e.g. when the role is used outside the ILM appliance:
 
 | variable | default |
 |---|---|
@@ -80,6 +95,21 @@ Role level fallbacks, used when the `rke2` dict isn't defined at all:
 | `rke2_allow_upgrade` | `false`, set to `true` to upgrade RKE2 in place |
 | `rke2_default_certmanager_version` | the cert-manager release to install |
 | `rke2_default_local_path_provisioner_version` | the local-path-provisioner release to install |
+| `rke2_certmanager_helm_repository_name` | `jetstack` |
+| `rke2_certmanager_helm_repository_url` | `https://charts.jetstack.io`, point it elsewhere to install the chart from a local mirror |
+
+[vars/main.yml](vars/main.yml) resolves the two into the variables the tasks
+use (`rke2_version`, `rke2_certmanager_version`, ...) and holds the switches
+for the optional components:
+
+| variable | default |
+|---|---|
+| `rke2_install_local_path_provisioner` | `true` |
+| `rke2_install_ingress_nginx` | `false`. The deployed release is hardwired to `controller-v1.3.1` in [tasks/ingress-nginx.yml](tasks/ingress-nginx.yml), it isn't configurable like the other two |
+
+`custom_kube_cfg_dir` is optional and takes the same shape as
+`rke2_default_kube_cfg_dir`: the kubeconfig is copied to `/root/.kube` plus
+every directory listed there, see the example playbook below.
 
 If you have to use HTTP_PROXY to access Internet, please visit [ansible role http_proxy](https://github.com/semik/ansible-role-http-proxy/tree/split#role-variables) for info howto provide the role with info about the Proxy.
 
