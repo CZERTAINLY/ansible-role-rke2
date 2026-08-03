@@ -1,19 +1,139 @@
 ---
-- name: Download local-path-provisioner
+# Which release to install is configured on the ILM appliance in
+# /etc/ilm-ansible/vars/rke2.yml. When that file doesn't set
+# local_path_provisioner_version the role level fallback from
+# defaults/main.yml is used. The second argument of default() makes an
+# empty value in the yaml file fall back as well.
+- name: Determine which local-path-provisioner release is requested
+  ansible.builtin.set_fact:
+    rke2_local_path_provisioner_version: "{{ rke2.local_path_provisioner_version
+                                             | default(rke2_default_local_path_provisioner_version, true) }}"
+
+- name: Verify that the requested local-path-provisioner version is a valid release
+  ansible.builtin.assert:
+    that:
+      - rke2_local_path_provisioner_version is match('^v[0-9]+[.][0-9]+[.][0-9]+([-+][0-9A-Za-z.-]+)?$')
+    fail_msg: >-
+      rke2.local_path_provisioner_version
+      '{{ rke2_local_path_provisioner_version }}' is not a valid
+      local-path-provisioner release. Expected something like v0.0.29, see
+      https://github.com/rancher/local-path-provisioner/releases
+
+# There is no Helm release to ask, the version is the tag of the image the
+# Deployment runs. 'resources' is an empty list when the Deployment, or the
+# whole namespace, doesn't exist yet.
+- name: Look for an installed local-path-provisioner
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: local-path-provisioner
+    namespace: local-path-storage
+  register: rke2_local_path_provisioner_deployment
+  check_mode: false
+
+# rancher/local-path-provisioner:v0.0.29 -> v0.0.29. An empty result means
+# it isn't installed yet and there is nothing to compare. An image pinned
+# by digest instead of by tag doesn't give a version either, that is caught
+# by the release check below.
+- name: Note the version of the installed local-path-provisioner
+  ansible.builtin.set_fact:
+    rke2_local_path_provisioner_installed: >-
+      {{ rke2_local_path_provisioner_deployment.resources | default([])
+      | map(attribute='spec.template.spec.containers') | flatten
+      | map(attribute='image') | select('search', 'local-path-provisioner')
+      | first | default('') | split(':') | last | default('', true) }}
+
+- name: Compare installed local-path-provisioner with the configured version
+  ansible.builtin.set_fact:
+    rke2_local_path_provisioner_installed_norm: "{{ rke2_local_path_provisioner_installed
+                                                    | regex_replace('^v', '') }}"
+    rke2_local_path_provisioner_target_norm: "{{ rke2_local_path_provisioner_version
+                                                 | regex_replace('^v', '') }}"
+
+# Applying the manifest of another release updates the Deployment, so it
+# would go backwards just as happily as forwards. A downgrade is refused,
+# and so is a jump over a minor release, which with the current v0.0.x
+# numbering can't happen anyway.
+#
+# Empty means "go ahead", which also covers a fresh install and the case
+# where the installed version is already the configured one.
+- name: Decide whether local-path-provisioner may be changed
+  ansible.builtin.set_fact:
+    rke2_local_path_provisioner_blocked_reason: >-
+      {{ ''
+         if rke2_local_path_provisioner_installed | length == 0
+            or rke2_local_path_provisioner_installed == rke2_local_path_provisioner_version
+         else ("the installed local-path-provisioner doesn't run a plain release image"
+         if not rke2_local_path_provisioner_installed is match('^v[0-9]+[.][0-9]+[.][0-9]+')
+         else ("it would be a downgrade"
+         if not rke2_local_path_provisioner_target_norm is version(rke2_local_path_provisioner_installed_norm, '>')
+         else ("it would skip a minor release, those have to be installed one at a time"
+         if (rke2_local_path_provisioner_target_norm.split('.')[0] | int)
+            != (rke2_local_path_provisioner_installed_norm.split('.')[0] | int)
+            or (rke2_local_path_provisioner_target_norm.split('.')[1] | int)
+               - (rke2_local_path_provisioner_installed_norm.split('.')[1] | int) > 1
+         else ''))) }}
+
+- name: Report which local-path-provisioner is installed
+  ansible.builtin.debug:
+    msg: >-
+      installed local-path-provisioner:
+      {{ rke2_local_path_provisioner_installed | default('none yet', true) }};
+      configured: {{ rke2_local_path_provisioner_version }};
+      action: {{ 'none'
+                 if rke2_local_path_provisioner_blocked_reason | length > 0
+                    or rke2_local_path_provisioner_installed == rke2_local_path_provisioner_version
+                 else ('install' if rke2_local_path_provisioner_installed | length == 0
+                       else 'upgrade') }}
+
+# The version is part of the file name on purpose. With a fixed name
+# get_url would send If-Modified-Since built from the mtime of the file
+# already there, and a release tagged before that file was downloaded
+# answers 304 Not Modified - the manifest of the old release would stay in
+# place and get applied again. A name which changes with the version can
+# never be stale.
+- name: Download local-path-provisioner {{ rke2_local_path_provisioner_version }}
   ansible.builtin.get_url:
-    url: https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.29/deploy/local-path-storage.yaml
-    dest: /root/install
+    url: https://raw.githubusercontent.com/rancher/local-path-provisioner/{{ rke2_local_path_provisioner_version }}/deploy/local-path-storage.yaml
+    dest: /root/install/local-path-storage-{{ rke2_local_path_provisioner_version }}.yaml
     mode: '0644'
-    backup: true
+  when: rke2_local_path_provisioner_blocked_reason | length == 0
   tags:
     - local-path-provisioner_download
 
 - name: Apply local-path-provisioner to k8s
   kubernetes.core.k8s:
     state: present
-    src: /root/install/local-path-storage.yaml
+    src: /root/install/local-path-storage-{{ rke2_local_path_provisioner_version }}.yaml
+  when: rke2_local_path_provisioner_blocked_reason | length == 0
   tags:
     - local-path-provisioner_install
+
+- name: Warn that the installed local-path-provisioner isn't the configured one
+  ansible.builtin.debug:
+    msg: "WARNING: {{ rke2_local_path_provisioner_mismatch_msg }}"
+  vars:
+    rke2_local_path_provisioner_mismatch_msg: >-
+      local-path-provisioner {{ rke2_local_path_provisioner_installed }} is
+      installed, but rke2.local_path_provisioner_version in
+      /etc/ilm-ansible/vars/rke2.yml asks for
+      {{ rke2_local_path_provisioner_version }}. It is not being changed,
+      because {{ rke2_local_path_provisioner_blocked_reason }}.
+  when:
+    - rke2_local_path_provisioner_blocked_reason | length > 0
+    - not (rke2_fail_on_version_mismatch | bool)
+
+- name: Fail because the installed local-path-provisioner isn't the configured one
+  ansible.builtin.fail:
+    msg: >-
+      local-path-provisioner {{ rke2_local_path_provisioner_installed }} is
+      installed, but rke2.local_path_provisioner_version in
+      /etc/ilm-ansible/vars/rke2.yml asks for
+      {{ rke2_local_path_provisioner_version }}. It is not being changed,
+      because {{ rke2_local_path_provisioner_blocked_reason }}.
+  when:
+    - rke2_local_path_provisioner_blocked_reason | length > 0
+    - rke2_fail_on_version_mismatch | bool
 
 - name: Wait for installation to complete
   ansible.builtin.include_tasks: wait2complete.yml
