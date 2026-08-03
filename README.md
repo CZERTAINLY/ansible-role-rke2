@@ -29,7 +29,7 @@ rke2:
   # cert-manager release installed into the cluster
   certmanager_version: v1.21.1
   # local-path-provisioner release providing the default storage class
-  local_path_provisioner_version: v0.0.29
+  local_path_provisioner_version: v0.0.36
 ```
 
 By default the role installs RKE2 only once and only warns when an exact
