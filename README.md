@@ -88,10 +88,11 @@ leaving the old manifest in place to be applied again.
 
 ### Role level variables
 
-[defaults/main.yml](defaults/main.yml) holds the value each variable above
-falls back to when nothing is passed in. They carry their own names so that
-a consumer of the role can use them while building its own value, the way
-`playbooks/ilm.yml` of the ILM appliance does:
+Everything else lives in [defaults/main.yml](defaults/main.yml), so all of it
+can be overridden the same way. The `rke2_default_*` ones hold the value each
+variable above falls back to when nothing is passed in; they carry their own
+names so that a consumer of the role can use them while building its own
+value, the way `playbooks/ilm.yml` of the ILM appliance does:
 
 ```
 rke2_channel: "{{ rke2.channel | default(rke2_default_channel, true) }}"
@@ -106,15 +107,11 @@ rke2_channel: "{{ rke2.channel | default(rke2_default_channel, true) }}"
 | `rke2_default_local_path_provisioner_version` | the local-path-provisioner release to install |
 | `rke2_certmanager_helm_repository_name` | `jetstack` |
 | `rke2_certmanager_helm_repository_url` | `https://charts.jetstack.io`, point it elsewhere to install the chart from a local mirror |
-
-[vars/main.yml](vars/main.yml) holds the switch for the optional component:
-
-| variable | default |
-|---|---|
-| `rke2_install_local_path_provisioner` | `true` |
+| `rke2_install_local_path_provisioner` | `true`, set to `false` to leave the cluster without a default storage class |
+| `rke2_base_kube_cfg_dir` | `/root/.kube`, owned by root |
 
 `custom_kube_cfg_dir` is optional and takes the same shape as
-`rke2_default_kube_cfg_dir`: the kubeconfig is copied to `/root/.kube` plus
+`rke2_base_kube_cfg_dir`: the kubeconfig is copied to `/root/.kube` plus
 every directory listed there, see the example playbook below.
 
 If you have to use HTTP_PROXY to access Internet, please visit [ansible role http_proxy](https://github.com/semik/ansible-role-http-proxy/tree/split#role-variables) for info howto provide the role with info about the Proxy.

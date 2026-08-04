@@ -5,6 +5,17 @@ ansible_python_interpreter: /usr/bin/python3
 rke2_certmanager_helm_repository_name: jetstack
 rke2_certmanager_helm_repository_url: https://charts.jetstack.io
 
+# local-path-provisioner provides the default storage class, set this to
+# false to leave the cluster without one.
+rke2_install_local_path_provisioner: true
+
+# Where the kubeconfig is copied to. custom_kube_cfg_dir is appended to this
+# list, so a consumer of the role adds directories instead of replacing it.
+rke2_base_kube_cfg_dir:
+  - owner: "root"
+    group: "root"
+    dir: "/root/.kube"
+
 # The versions the role picks when nothing is passed in, each exposed under
 # its own name so that whoever uses the role can build the rke2_* variable
 # below out of its own configuration and still fall back to the role default,

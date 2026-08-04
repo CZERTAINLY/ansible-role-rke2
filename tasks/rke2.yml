@@ -189,7 +189,7 @@
 
 - name: Create var with paths
   ansible.builtin.set_fact:
-    kube_cfg_dir: "{{ rke2_default_kube_cfg_dir + custom_kube_cfg_dir | default([]) }}"
+    kube_cfg_dir: "{{ rke2_base_kube_cfg_dir + custom_kube_cfg_dir | default([]) }}"
   tags:
     - kube_config
 
