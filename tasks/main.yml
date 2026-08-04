@@ -36,14 +36,6 @@
       tags: rke2
   tags: rke2
 
-- name: Install ingress-nginx
-  ansible.builtin.include_tasks:
-    file: ingress-nginx.yml
-    apply:
-      tags: ingress-nginx
-  tags: ingress-nginx
-  when: rke2_install_ingress_nginx
-
 - name: Install local-path-provisioner
   ansible.builtin.include_tasks:
     file: local-path-provisioner.yml

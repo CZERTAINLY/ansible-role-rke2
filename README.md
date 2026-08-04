@@ -3,8 +3,9 @@
 Install [rke2](https://docs.rke2.io/) on Debian GNU/Linux, together with
 [cert-manager](https://cert-manager.io/) and
 [local-path-provisioner](https://github.com/rancher/local-path-provisioner),
-which provides the default storage class. ingress-nginx can be deployed as
-well, but is off by default - see the role level variables below.
+which provides the default storage class. Ingress is left to RKE2 itself,
+the role only adds a NetworkPolicy that lets the bundled controller reach
+the backends.
 
 ## Requirements
 The role is designed for [Debian GNU/Linux](https://debian.org).
@@ -106,13 +107,11 @@ rke2_channel: "{{ rke2.channel | default(rke2_default_channel, true) }}"
 | `rke2_certmanager_helm_repository_name` | `jetstack` |
 | `rke2_certmanager_helm_repository_url` | `https://charts.jetstack.io`, point it elsewhere to install the chart from a local mirror |
 
-[vars/main.yml](vars/main.yml) holds the switches for the optional
-components:
+[vars/main.yml](vars/main.yml) holds the switch for the optional component:
 
 | variable | default |
 |---|---|
 | `rke2_install_local_path_provisioner` | `true` |
-| `rke2_install_ingress_nginx` | `false`. The deployed release is hardwired to `controller-v1.3.1` in [tasks/ingress-nginx.yml](tasks/ingress-nginx.yml), it isn't configurable like the other two |
 
 `custom_kube_cfg_dir` is optional and takes the same shape as
 `rke2_default_kube_cfg_dir`: the kubeconfig is copied to `/root/.kube` plus
