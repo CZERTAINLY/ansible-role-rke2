@@ -84,7 +84,7 @@
     rke2_needs_upgrade: "{{ rke2_binary.stat.exists
                             and rke2_version | length > 0
                             and rke2_version != rke2_installed_version
-                            and rke2_upgrade_allowed | bool }}"
+                            and rke2_allow_upgrade | bool }}"
   tags:
     - rke2_install
 
@@ -151,7 +151,7 @@
 
 # Waiting for the node to report the new version proves both that the API
 # server came back and that the upgrade really took effect. kubeletVersion
-# has the same shape as rke2.version, e.g. v1.35.6+rke2r1. The kubeconfig
+# has the same shape as rke2_version, e.g. v1.35.6+rke2r1. The kubeconfig
 # is given explicitly, /root/.kube/config is only created further down.
 - name: Wait until the node runs the new RKE2
   ansible.builtin.command:

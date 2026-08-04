@@ -18,7 +18,7 @@
   when: (repo_cache.stat.mtime | default(0)) < (ansible_date_time.epoch | int - 86400)
 
 # Helm installs or upgrades to chart_version as needed, so changing
-# rke2.certmanager_version is enough to move cert-manager. Whether the new
+# rke2_certmanager_version is enough to move cert-manager. Whether the new
 # release can be reached from the running one in one step is up to the
 # operator, see https://cert-manager.io/docs/installation/upgrade/
 - name: Install cert-manager {{ rke2_certmanager_version }}

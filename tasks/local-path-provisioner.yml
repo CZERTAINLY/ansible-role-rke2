@@ -1,6 +1,6 @@
 ---
 # Applying the manifest of another release updates the Deployment, so
-# changing rke2.local_path_provisioner_version is enough to move
+# changing rke2_local_path_provisioner_version is enough to move
 # local-path-provisioner.
 #
 # The version is part of the file name on purpose: with a fixed name get_url

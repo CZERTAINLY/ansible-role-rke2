@@ -12,26 +12,29 @@ The role is designed for [Debian GNU/Linux](https://debian.org).
 ## Role Variables
 
 Which release of RKE2 is installed, and which cert-manager and
-local-path-provisioner go with it, is configured through a single `rke2`
-dict. On the ILM appliance that dict lives in
-`/etc/ilm-ansible/vars/rke2.yml` and is loaded by `playbooks/ilm.yml` with
-`include_vars`. All keys are optional, the default is the newest release of
-the `stable` channel, installed once and never upgraded.
+local-path-provisioner go with it, is configured through these variables.
+All of them are optional, the default is the newest release of the `stable`
+channel, installed once and never upgraded.
 
 ```
-rke2:
-  # 'stable', 'latest', 'testing' or a minor channel like 'v1.32', see
-  # https://update.rke2.io/v1-release/channels
-  channel: stable
-  # exact release, takes precedence over channel, e.g. v1.32.5+rke2r1
-  version: v1.32.5+rke2r1
-  # let the role upgrade an already installed RKE2 to 'version'
-  allow_upgrade: false
-  # cert-manager release installed into the cluster
-  certmanager_version: v1.21.1
-  # local-path-provisioner release providing the default storage class
-  local_path_provisioner_version: v0.0.36
+# 'stable', 'latest', 'testing' or a minor channel like 'v1.32', see
+# https://update.rke2.io/v1-release/channels
+rke2_channel: stable
+# exact release, takes precedence over the channel, e.g. v1.32.5+rke2r1
+rke2_version: v1.32.5+rke2r1
+# let the role upgrade an already installed RKE2 to rke2_version
+rke2_allow_upgrade: false
+# cert-manager release installed into the cluster
+rke2_certmanager_version: v1.21.1
+# local-path-provisioner release providing the default storage class
+rke2_local_path_provisioner_version: v0.0.36
 ```
+
+On the ILM appliance they are not set directly: the appliance keeps its
+configuration in an `rke2` dict in `/etc/ilm-ansible/vars/rke2.yml`, and
+`playbooks/ilm.yml` maps that dict onto the variables above, falling back to
+the `rke2_default_*` values listed below for every key the operator left
+out.
 
 Every run reports which RKE2 is installed, which one is configured and what
 the role is about to do:
@@ -45,16 +48,16 @@ ok: [ilm] => {
 
 By default the role installs RKE2 only once, so on later runs the action is
 `none` even when the configured version has changed since. With
-`allow_upgrade: true` it upgrades in place instead, following the
+`rke2_allow_upgrade: true` it upgrades in place instead, following the
 [documented procedure](https://docs.rke2.io/upgrades/manual): re-run the
 installer, then restart `rke2-server`. That stops and starts the
 Kubernetes cluster. Before touching anything the role saves an etcd
 snapshot named `pre-upgrade`, and afterwards it waits until the node
 reports the new version, so a failed upgrade doesn't pass unnoticed.
 
-Only an exact `version` can be upgraded to. A `channel` is resolved by the
-installer, so there is nothing to compare the installed version with, and
-the role leaves an existing installation alone.
+Only an exact `rke2_version` can be upgraded to. An `rke2_channel` is
+resolved by the installer, so there is nothing to compare the installed
+version with, and the role leaves an existing installation alone.
 
 Whether the configured release can be reached from the running one is up to
 the operator - the role doesn't check it. Kubernetes can't be downgraded,
@@ -63,12 +66,12 @@ and minor releases have to be installed one at a time (e.g. 1.34 -> 1.35 ->
 
 ### cert-manager and local-path-provisioner
 
-These two need no `allow_upgrade`: they are upgraded in place whenever the
-configured version changes and neither restarts the cluster. Helm installs
-or upgrades the cert-manager release to `certmanager_version`, and applying
-the manifest of the configured local-path-provisioner release updates its
-Deployment. Both run on every playbook run and are no-ops when the cluster
-already matches.
+These two need no `rke2_allow_upgrade`: they are upgraded in place whenever
+the configured version changes and neither restarts the cluster. Helm
+installs or upgrades the cert-manager release to `rke2_certmanager_version`,
+and applying the manifest of the configured local-path-provisioner release
+updates its Deployment. Both run on every playbook run and are no-ops when
+the cluster already matches.
 
 Upgrade compatibility is again the operator's call. cert-manager
 [has to be upgraded one minor release at a time](https://cert-manager.io/docs/installation/upgrade/),
@@ -84,23 +87,27 @@ leaving the old manifest in place to be applied again.
 
 ### Role level variables
 
-Fallbacks from [defaults/main.yml](defaults/main.yml), used for every key
-the `rke2` dict above doesn't set - including the case where it isn't
-defined at all, e.g. when the role is used outside the ILM appliance:
+[defaults/main.yml](defaults/main.yml) holds the value each variable above
+falls back to when nothing is passed in. They carry their own names so that
+a consumer of the role can use them while building its own value, the way
+`playbooks/ilm.yml` of the ILM appliance does:
+
+```
+rke2_channel: "{{ rke2.channel | default(rke2_default_channel, true) }}"
+```
 
 | variable | default |
 |---|---|
 | `rke2_default_channel` | `stable` |
 | `rke2_default_version` | empty, meaning "resolve the channel" |
-| `rke2_allow_upgrade` | `false`, set to `true` to upgrade RKE2 in place |
+| `rke2_default_allow_upgrade` | `false`, set to `true` to upgrade RKE2 in place |
 | `rke2_default_certmanager_version` | the cert-manager release to install |
 | `rke2_default_local_path_provisioner_version` | the local-path-provisioner release to install |
 | `rke2_certmanager_helm_repository_name` | `jetstack` |
 | `rke2_certmanager_helm_repository_url` | `https://charts.jetstack.io`, point it elsewhere to install the chart from a local mirror |
 
-[vars/main.yml](vars/main.yml) resolves the two into the variables the tasks
-use (`rke2_version`, `rke2_certmanager_version`, ...) and holds the switches
-for the optional components:
+[vars/main.yml](vars/main.yml) holds the switches for the optional
+components:
 
 | variable | default |
 |---|---|
