@@ -108,7 +108,7 @@ rke2_channel: "{{ rke2.channel | default(rke2_default_channel, true) }}"
 | `rke2_certmanager_helm_repository_name` | `jetstack` |
 | `rke2_certmanager_helm_repository_url` | `https://charts.jetstack.io`, point it elsewhere to install the chart from a local mirror |
 | `rke2_install_local_path_provisioner` | `true`, set to `false` to leave the cluster without a default storage class |
-| `rke2_base_kube_cfg_dir` | `/root/.kube`, owned by root |
+| `rke2_base_kube_cfg_dir` | list of kubeconfig directories (default: /root/.kube owned by root) |
 
 `custom_kube_cfg_dir` is optional and takes the same shape as
 `rke2_base_kube_cfg_dir`: the kubeconfig is copied to `/root/.kube` plus
