@@ -31,11 +31,10 @@ rke2_certmanager_version: v1.21.1
 rke2_local_path_provisioner_version: v0.0.36
 ```
 
-On the ILM appliance they are not set directly: the appliance keeps its
-configuration in an `rke2` dict in `/etc/ilm-ansible/vars/rke2.yml`, and
-`playbooks/ilm.yml` maps that dict onto the variables above, falling back to
-the `rke2_default_*` values listed below for every key the operator left
-out.
+On the ILM appliance they are set in the `vars` of `playbooks/ilm.yml`,
+which pins `rke2_version` and leaves the rest at the `rke2_default_*` values
+listed below. They are deliberately not part of `/etc/ilm-ansible/vars`,
+which holds only what the appliance TUI configures.
 
 Every run reports which RKE2 is installed, which one is configured and what
 the role is about to do:
@@ -92,10 +91,10 @@ Everything else lives in [defaults/main.yml](defaults/main.yml), so all of it
 can be overridden the same way. The `rke2_default_*` ones hold the value each
 variable above falls back to when nothing is passed in; they carry their own
 names so that a consumer of the role can use them while building its own
-value, the way `playbooks/ilm.yml` of the ILM appliance does:
+value out of its own configuration:
 
 ```
-rke2_channel: "{{ rke2.channel | default(rke2_default_channel, true) }}"
+rke2_channel: "{{ my_settings.channel | default(rke2_default_channel, true) }}"
 ```
 
 | variable | default |
