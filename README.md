@@ -116,7 +116,6 @@ every directory listed there, see the example playbook below.
 If you have to use HTTP_PROXY to access Internet, please visit [ansible role http_proxy](https://github.com/semik/ansible-role-http-proxy/tree/split#role-variables) for info howto provide the role with info about the Proxy.
 
 ## Example Playbook
-
 ```
 - hosts: localhost
   connection: local
