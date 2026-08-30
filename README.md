@@ -117,7 +117,6 @@ If you have to use HTTP_PROXY to access Internet, please visit [ansible role htt
 
 ## Example Playbook
 
-This is example playbook:
 ```
 - hosts: localhost
   connection: local
